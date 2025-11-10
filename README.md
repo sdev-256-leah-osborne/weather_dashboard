@@ -6,7 +6,7 @@ This project is a **Flask-based single-page weather dashboard** that displays re
 
 ## **Features**
 
-- Real-time weather and forecast data powered by the **OpenWeatherMap API**  
+- Real-time weather and forecast data powered by the **Google Weather API**  
 - **City search** with live, dynamic result updates  
 - **Add or remove favorites** using cookie-based storage  
 - **Responsive and simple interface** that works across devices  
@@ -31,7 +31,7 @@ This project is a **Flask-based single-page weather dashboard** that displays re
    ```
 
 3. **Configure your API key:**
-   Add your **OpenWeatherMap API key** to `.env` or `config.py`.
+   Add your **Google API key** to `.env`
 
 4. **Run the application:**
 
