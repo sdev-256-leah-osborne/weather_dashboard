@@ -1,0 +1,15 @@
+[MASTER]
+# Directories to ignore
+ignore=venv,__pycache__,migrations,tests
+
+[MESSAGES CONTROL]
+# Disable some noisy warnings
+disable=C0114,C0115,C0116  # missing module, class, function docstrings
+disable=R0903              # too few public methods
+
+[FORMAT]
+max-line-length=120
+
+[TYPECHECK]
+# Ignore import errors for local packages
+ignored-modules=pytest
