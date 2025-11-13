@@ -55,7 +55,7 @@ jobs:
           
       # 6. Run JavaScript linting
       - name: Run ESLint
-        run: npx eslint ./static/js/*.js
+        run: npx eslint --legacy-config ./static/js/*.js
 
       # 7. Run CSS linting
       - name: Run CSSLint
