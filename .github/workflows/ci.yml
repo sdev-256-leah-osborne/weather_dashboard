@@ -53,7 +53,7 @@ jobs:
 
       # 7. Python lint (must pass to continue)
       - name: Run Pylint
-        run: pylint **/*.py
+        run: pylint .
 
       # 8. Test (must pass to continue)
       - name: Run pytest
