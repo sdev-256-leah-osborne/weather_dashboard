@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, jsonify
-from config import DebugConfig as cfg
 import requests
-import os
+from config import DebugConfig as cfg
 
 
 app = Flask(__name__)
@@ -27,7 +26,7 @@ def current_weather():
     }
 
     try:
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=(5, 15))
         r.raise_for_status()
         return jsonify(r.json())
     except requests.RequestException as e:
@@ -49,7 +48,7 @@ def daily_weather():
     }
 
     try:
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=(5, 15))
         r.raise_for_status()
         return jsonify(r.json())
     except requests.RequestException as e:
@@ -71,7 +70,7 @@ def hourly_weather():
     }
 
     try:
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=(5, 15))
         r.raise_for_status()
         return jsonify(r.json())
     except requests.RequestException as e:
@@ -92,7 +91,7 @@ def autocomplete():
     }
 
     try:
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=(5, 15))
         r.raise_for_status()
         return jsonify(r.json())
     except requests.RequestException as e:
@@ -113,7 +112,7 @@ def place_details():
     }
 
     try:
-        r = requests.get(url, params=params)
+        r = requests.get(url, params=params, timeout=(5, 15))
         r.raise_for_status()
         data = r.json()
 
