@@ -44,14 +44,9 @@ jobs:
           node-version: '20'
 
       # 5. Install linters
-      - name: Install HTML/CSS linters
+      - name: Install JS/HTML/CSS linters
         run: |
-          npm install -g csslint htmlhint
-
-      # 5. Install ESLint with XO shared config
-      - name: Install ESLint + XO
-        run: |
-          npm install eslint eslint-config-xo --save-dev
+          npm install -g eslint csslint htmlhint
           
       # 6. Run JavaScript linting
       - name: Run ESLint
