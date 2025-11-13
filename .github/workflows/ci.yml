@@ -20,47 +20,55 @@ jobs:
       id-token: write
 
     steps:
-      #Checkout
+      # 1. Checkout
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      #Set up Python
+      # 2. Set up Python
       - name: Set up Python 3.14
         uses: actions/setup-python@v4
         with:
           python-version: 3.14
 
-      #Install dependencies
-      - name: Install dependencies
+      # 3. Install Python dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pylint pytest flake8 pyjslint
+          pip install pylint pytest flake8
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-      
-      #JavaScript Lint (must pass to continue)
-      - name: Run JSLint
-        run: |
-          find ./static/js -name "*.js" -print0 | xargs -0 pyjslint
-        
-      #Python Lint (must pass to continue)
+
+      # 4. Set up Node.js for ESLint
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+
+      # 5. Install ESLint (without a package.json)
+      - name: Install ESLint
+        run: npm install eslint
+
+      # 6. JavaScript lint (must pass to continue)
+      - name: Run ESLint
+        run: npx eslint ./static/js/**/*.js
+
+      # 7. Python lint (must pass to continue)
       - name: Run Pylint
         run: pylint **/*.py
 
-      #Test (must pass to continue)
+      # 8. Test (must pass to continue)
       - name: Run pytest
         run: |
-          # Run pytest in tests/ folder if it exists, ignore exit if no tests
           if [ -d tests ]; then
             pytest tests/
           else
             echo "No tests folder found, skipping pytest"
           fi
 
-      #Set up Docker Buildx
+      # 9. Set up Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      #Verify .dockerignore
+      # 10. Verify .dockerignore
       - name: Verify .dockerignore
         run: |
           echo "Checking Docker build context..."
@@ -68,7 +76,7 @@ jobs:
             && echo "Found ignored files!" \
             || echo "Everything ignored correctly!"
 
-      # 9. Login to registry
+      # 11. Login to registry
       - name: Log into registry
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -77,14 +85,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      #Extract Docker metadata
+      # 12. Extract Docker metadata
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
 
-      #Build and push Docker image
+      # 13. Build and push Docker image
       - name: Build and push Docker image
         if: github.event_name != 'pull_request'
         id: build-and-push
@@ -97,7 +105,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      #Install cosign and sign
+      # 14. Install cosign and sign
       - name: Install cosign
         if: github.event_name != 'pull_request'
         uses: sigstore/cosign-installer@v3
