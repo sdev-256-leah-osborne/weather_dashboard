@@ -1,0 +1,42 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Git
+.git
+.gitignore
+
+# Editor / IDE stuff
+.vscode/
+.idea/
+
+# Bytecode / build artifacts
+*.db
+*.sqlite3
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (other than this one)
+Dockerfile*
+docker-compose*
+
+# Node stuff (if you ever add any frontend)
+node_modules/
+
+# Large / optional asset folders
+media/
+staticfiles/
+
+# Environment / secrets
+.env
+*.env
