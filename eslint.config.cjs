@@ -1,18 +1,16 @@
 // eslint.config.cjs
-const { FlatCompat } = require('@eslint/eslintrc');
-
-const compat = new FlatCompat({
-  baseConfig: {
-    parserOptions: { ecmaVersion: 2020 },
-    env: { browser: true, es2021: true },
+module.exports = [
+  {
+    files: ["./static/js/**/*.js"],
+    languageOptions: {
+      parserOptions: {
+        ecmaVersion: 2021,
+      },
+      sourceType: "module",
+    },
     rules: {
-      semi: ['error', 'always'],
-      quotes: ['error', 'single'],
+      semi: "error",
+      quotes: ["error", "single"],
     },
   },
-  recommendedConfig: true,
-});
-
-module.exports = [
-  compat.config,
 ];
