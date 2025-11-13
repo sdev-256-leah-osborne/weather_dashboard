@@ -39,7 +39,8 @@ jobs:
       
       #JavaScript Lint (must pass to continue)
       - name: Run JSLint
-        run: pyjslint ./static/js/**/*.js
+        run: |
+          find ./static/js -name "*.js" -print0 | xargs -0 pyjslint
         
       #Python Lint (must pass to continue)
       - name: Run Pylint
