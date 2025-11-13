@@ -46,7 +46,10 @@ jobs:
       # 5. Install linters
       - name: Install JS/HTML/CSS linters
         run: |
-          npm install -g eslint csslint htmlhint
+          # Install ESLint + modern JS config package
+          npm install -g eslint @eslint/js
+          # Install CSS and HTML linters globally
+          npm install -g csslint htmlhint
           
       # 6. Run JavaScript linting
       - name: Run ESLint
