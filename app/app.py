@@ -28,7 +28,7 @@ def load_cookie(name, default=None):
         return default
     try:
         return json.loads(raw)
-    except:
+    except json.JSONDecodeError:
         return default
 
 
