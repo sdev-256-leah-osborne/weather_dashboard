@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, jsonify, abort
+from jinja2 import TemplateNotFound, TemplateError
 import requests
-from config import DebugConfig as cfg
+from app.config import DebugConfig as cfg
 
 
 app = Flask(__name__)
@@ -44,7 +45,7 @@ def call_api(url, params):
 def index():
     try:
         return render_template("index.html")
-    except Exception:
+    except (TemplateNotFound, TemplateError):
         abort(404)
 
 
