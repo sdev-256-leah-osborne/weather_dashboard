@@ -53,15 +53,15 @@ jobs:
           
       # 6. Run JavaScript linting
       - name: Run ESLint
-        run: npx eslint ./static/js/*.js
+        run: npx eslint ./app/static/js/*.js
 
       # 7. Run CSS linting
       - name: Run CSSLint
-        run: csslint ./static/css/*.css
+        run: csslint ./app/static/css/*.css
 
       # 8. Run HTML linting
       - name: Run HTMLHint
-        run: htmlhint ./templates/*.html
+        run: htmlhint ./app/templates/*.html
 
       # 9. Run Python linting
       - name: Run Pylint
