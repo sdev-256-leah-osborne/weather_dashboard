@@ -8,6 +8,8 @@ class Config:
     """Base configuration class"""
 
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+    REQUESTS_CONNECT_TIMEOUT = 5
+    REQUESTS_RESPONSE_TIMEOUT = 15
 
 
 class DebugConfig(Config):
