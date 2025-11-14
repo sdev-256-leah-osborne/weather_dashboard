@@ -8,8 +8,11 @@ class Config:
     """Base configuration class"""
 
     GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-    REQUESTS_CONNECT_TIMEOUT = 5
-    REQUESTS_RESPONSE_TIMEOUT = 15
+    REQUESTS_CONNECT_TIMEOUT = 5  # seconds
+    REQUESTS_RESPONSE_TIMEOUT = 15  # seconds
+    FAV_COOKIE = "favorites"
+    MAX_FAVORITES = 10
+    MAX_COOKIE_AGE = 60 * 60 * 24 * 30  # seconds*minutes*hours*days
 
 
 class DebugConfig(Config):
