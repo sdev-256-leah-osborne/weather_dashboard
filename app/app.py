@@ -1,8 +1,9 @@
-from .config import DebugConfig as cfg
+import json
 from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
 import requests
-import json
+from .config import DebugConfig as cfg
+
 
 app = Flask(__name__)
 
