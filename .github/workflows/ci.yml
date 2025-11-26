@@ -134,3 +134,119 @@ jobs:
     runs-on: ubuntu-latest
     needs: node-setup
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('package-lock.json') }}
+      - name: Run HTML linter
+        run: htmlhint ./app/templates/*.html
+
+# -------------------------------
+# Docker Setup, Build, and Signing
+# -------------------------------
+  docker-setup:
+    runs-on: ubuntu-latest
+    needs:
+      - python-test
+      - js-lint
+      - css-lint
+      - html-lint
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verify Docker build context
+        run: |
+          echo "Checking Docker build context..."
+          docker build --progress=plain . | grep -E ".env|__pycache__|venv" \
+            && echo "Warning: Ignored files found in build context" \
+            || echo "Docker build context is clean"
+
+  docker-login:
+    runs-on: ubuntu-latest
+    needs: docker-setup
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Log in to Docker registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+  docker-meta:
+    runs-on: ubuntu-latest
+    needs: docker-login
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract Docker image metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: docker-meta
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and push Docker image
+        id: build-and-push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ needs.docker-meta.outputs.tags }}
+          labels: ${{ needs.docker-meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+    outputs:
+      digest: ${{ steps.build-and-push.outputs.digest }}
+
+  docker-sign:
+    runs-on: ubuntu-latest
+    needs: docker-build
+    if: github.event_name != 'pull_request' && needs.docker-build.outputs.digest != ''
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+        with:
+          cosign-release: "v2.2.4"
+
+      - name: Sign Docker image
+        env:
+          TAGS: ${{ needs.docker-meta.outputs.tags }}
+          DIGEST: ${{ needs.docker-build.outputs.digest }}
+        run: |
+          echo "Signing Docker image..."
+          echo "${TAGS}" | xargs -I {} cosign sign --yes {}@${DIGEST}
