@@ -1,4 +1,0 @@
-#requirements-dev
-pylint>=4.0.3
-flake8>=7.3.0
-pytest>=7.0.0
