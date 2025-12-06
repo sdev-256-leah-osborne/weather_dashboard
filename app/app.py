@@ -1,5 +1,13 @@
 import json
-from flask import Flask, render_template, request, jsonify, abort, make_response
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    abort,
+    make_response,
+    Response,
+)
 from jinja2 import TemplateNotFound, TemplateError
 import requests
 from .config import DebugConfig as cfg
@@ -356,3 +364,27 @@ def place_details():
         "geometry": result.get("geometry"),
     }
     return jsonify(response), 200
+
+
+@app.route("/icon")
+def icon_proxy():
+    # Get the original URL from query parameter
+    url = request.args.get("url")
+    if not url:
+        return "Missing url parameter", 400
+
+    try:
+        # Fetch the image from the original source
+        resp = requests.get(url)
+        resp.raise_for_status()
+
+        # Create a response with the content and correct headers
+        response = Response(
+            resp.content, content_type=resp.headers.get("Content-Type", "image/svg+xml")
+        )
+        # Allow cross-origin requests
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        return response
+
+    except requests.RequestException as e:
+        return f"Failed to fetch image: {e}", 500
