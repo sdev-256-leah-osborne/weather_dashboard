@@ -200,16 +200,17 @@ def get_param(name):
     return value
 
 
-def call_api(url, params):
+def call_api(url, params=None, raw=False):
     """
-    Safely call an external API and return the JSON response.
+    Safely call an external API and return JSON or raw response.
 
     Args:
         url (str): API URL.
-        params (dict): Query parameters.
+        params (dict, optional): Query parameters.
+        raw (bool): If True, return the raw Response object instead of JSON.
 
     Returns:
-        tuple: (response dict, HTTP status code)
+        tuple: (dict or Response, HTTP status code)
     """
     try:
         r = requests.get(
@@ -218,7 +219,7 @@ def call_api(url, params):
             timeout=(cfg.REQUESTS_CONNECT_TIMEOUT, cfg.REQUESTS_RESPONSE_TIMEOUT),
         )
         r.raise_for_status()
-        return r.json(), 200
+        return (r if raw else r.json()), 200
     except requests.RequestException as e:
         return {"error": str(e)}, 500
     except ValueError:
@@ -367,24 +368,24 @@ def place_details():
 
 
 @app.route("/icon")
-def icon_proxy():
-    # Get the original URL from query parameter
-    url = request.args.get("url")
-    if not url:
-        return "Missing url parameter", 400
+def icon():
+    """
+    Proxy weather icons to avoid CORS issues.
+    Expects query param 'url' with the full icon URL.
+    """
+    icon_url = request.args.get("url")
+    if not icon_url:
+        return {"error": "Missing 'url' parameter"}, 400
 
-    try:
-        # Fetch the image from the original source
-        resp = requests.get(url)
-        resp.raise_for_status()
+    # Use the call_api helper to get the raw response
+    response, status = call_api(icon_url, raw=True)
+    if status != 200:
+        return {"error": "Failed to fetch icon"}, status
 
-        # Create a response with the content and correct headers
-        response = Response(
-            resp.content, content_type=resp.headers.get("Content-Type", "image/svg+xml")
-        )
-        # Allow cross-origin requests
-        response.headers["Access-Control-Allow-Origin"] = "*"
-        return response
-
-    except requests.RequestException as e:
-        return f"Failed to fetch image: {e}", 500
+    # Return the image content with proper headers
+    return Response(
+        response.content,
+        status=200,
+        content_type=response.headers.get("Content-Type", "image/svg+xml"),
+        headers={"Access-Control-Allow-Origin": "*"}
+    )
