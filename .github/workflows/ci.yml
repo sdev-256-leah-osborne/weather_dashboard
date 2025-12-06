@@ -96,7 +96,6 @@ jobs:
     needs:
       - python-test
       - js-lint
-      - css-lint
       - html-lint
     permissions:
       contents: read
