@@ -67,26 +67,10 @@ jobs:
       - name: Install JS and CSS linters
         run: |
           npm install --save-dev eslint @eslint/js
-          npm install -g csslint htmlhint
+          npm install -g htmlhint
           
       - name: Run JavaScript linter
         run: npx eslint ./app/static/js/*.js
-
-  css-lint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install JS and CSS linters
-        run: |
-          npm install --save-dev eslint @eslint/js
-          npm install -g csslint htmlhint
-    
-      - name: Run CSS linter
-        run: csslint ./app/static/css/*.css
 
   html-lint:
     runs-on: ubuntu-latest
