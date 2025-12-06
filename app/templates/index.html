@@ -1,4 +1,4 @@
-<! DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,20 +8,24 @@
 </head>
 <body>
     <div class="container">
-        <h1>Weather Dashboard</h1>
-
+        <header class="header">
+            <h1>Weather Dashboard</h1>
+            <div class="temp-toggle" id="tempToggle">
+                <span class="temp-unit-c active">°C</span>
+                <span class="temp-unit-f">°F</span>
+            </div>
+        </header>
+        
         <div class="search-section">
-            <svg class="search-icon" xmlns="http://www.w3. org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-            <input type="text" id="cityInput" placeholder="Search for a city... ">
+            <input type="text" id="cityInput" placeholder="Search for a city...">
             <div id="searchResults" class="search-results"></div>
         </div>
 
         <div class="favorites-section">
-            <div class="favorites-list" id="favorites">
-
-            </div>
+            <div class="favorites-list" id="favorites"></div>
         </div>
 
         <div class="weather-card" id="currentWeather">
@@ -31,7 +35,9 @@
                 </div>
             </div>
             <div class="weather-info">
-                <div class="weather-icon">☀️</div>
+                <div class="weather-icon">
+                    <img src="https://maps.gstatic.com/weather/v1/cloudy.svg" alt="Weather" class="weather-icon-img">
+                </div>
                 <div class="weather-main">
                     <div class="temperature">--°C</div>
                     <div class="condition">No data</div>
@@ -47,19 +53,22 @@
                     <div class="metric-label">Humidity</div>
                 </div>
             </div>
-            <div class="metric-card">
+            <div class="metric-card wind-card">
                 <div class="metric-icon">💨</div>
                 <div class="metric-content">
                     <div class="metric-value">-- km/h</div>
                     <div class="metric-label">Wind</div>
+                </div>
+                <div class="wind-toggle" id="windToggle">
+                    <span class="wind-unit-km active">km/h</span>
+                    <span class="wind-unit-mi">mph</span>
                 </div>
             </div>
         </div>
 
         <div class="forecast-container" id="forecastContainer" style="display: none;">
             <h2>5-Day Forecast</h2>
-            <div class="forecast-grid" id="forecast">
-            </div>
+            <div class="forecast-grid" id="forecast"></div>
         </div>
     </div>
 
