@@ -154,7 +154,7 @@ def get_param(name):
 
 
 # -------------------------
-# API Caller – Safe
+# API Caller
 # -------------------------
 
 
@@ -298,7 +298,7 @@ def place_details():
 
 
 # -------------------------
-# Icon Proxy (CWE-918 handled via fixed URL)
+# Icon Proxy
 # -------------------------
 
 
