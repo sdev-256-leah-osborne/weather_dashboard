@@ -84,6 +84,7 @@ def sanitize_favorites(favs):
 
 @app.route("/favorites/get", methods=["GET"])
 def favorites_get():
+    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
     try:
         favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
         place_id = request.args.get("place_id")
@@ -96,13 +97,14 @@ def favorites_get():
 
         return jsonify(favorites), 200
 
-    except Exception:
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
         logger.exception("favorites_get failed")
         return jsonify({"error": "Internal error"}), 500
 
 
 @app.route("/favorites/set", methods=["POST"])
 def favorites_set():
+    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
     try:
         place_id = request.args.get("place_id")
         name = request.args.get("name")
@@ -128,13 +130,14 @@ def favorites_set():
         save_cookie(resp, cfg.FAV_COOKIE, favorites)
         return resp
 
-    except Exception:
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
         logger.exception("favorites_set failed")
         return jsonify({"error": "Internal error"}), 500
 
 
 @app.route("/favorites/delete", methods=["POST"])
 def favorites_delete():
+    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
     try:
         place_id = request.args.get("place_id")
         if not place_id:
@@ -146,23 +149,23 @@ def favorites_delete():
             return jsonify({"error": "Not found"}), 400
 
         favorites = [f for f in favorites if f["place_id"] != place_id]
-
         resp = jsonify({"status": "deleted"})
         save_cookie(resp, cfg.FAV_COOKIE, favorites)
         return resp
 
-    except Exception:
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
         logger.exception("favorites_delete failed")
         return jsonify({"error": "Internal error"}), 500
 
 
 @app.route("/favorites/clear", methods=["POST"])
 def favorites_clear():
+    # Possible exceptions handled: TypeError, ValueError
     try:
         resp = jsonify({"status": "cleared"})
         save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
         return resp
-    except Exception:
+    except (TypeError, ValueError):
         logger.exception("favorites_clear failed")
         return jsonify({"error": "Internal error"}), 500
 
@@ -206,9 +209,10 @@ def call_api(url, params=None, raw=False):
         logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
 
-    except Exception:
-        logger.exception("Unhandled error calling API: %s", url)
-        return {"error": "Internal error"}, 500
+    except ValueError:
+        # JSON decoding or other value errors
+        logger.exception("Value error when processing API response: %s", url)
+        return {"error": "Invalid response from external service"}, 502
 
 
 # -------------------------
@@ -220,11 +224,9 @@ def call_api(url, params=None, raw=False):
 def index():
     try:
         return render_template("index.html")
-
     except TemplateNotFound:
         logger.warning("Template index.html missing")
         abort(404)
-
     except TemplateError:
         logger.error("Template processing error")
         abort(500)
@@ -315,7 +317,7 @@ def place_details():
     if status != 200:
         return jsonify(data), status
 
-    if data.get("status") != "OK":
+    if not isinstance(data, dict) or data.get("status") != "OK":
         return jsonify({"error": "Lookup failed"}), 400
 
     result = data.get("result", {})
@@ -342,6 +344,7 @@ def icon():
     if status != 200:
         return jsonify({"error": "Failed to fetch icon"}), status
 
+    # resp is a requests.Response when raw=True
     return Response(
         resp.content,
         status=200,
