@@ -75,66 +75,63 @@ def sanitize_favorites(favs):
 # -------------------------
 
 
-@app.route("/favorites/<action>", methods=["GET", "POST"])
-def favorites_route(action):
-    try:
-        fav_list = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
-        status = 200
-        result = {}
+@app.route("/favorites/get", methods=["GET"])
+def favorites_get():
+    fav_list = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+    place_id = request.args.get("place_id")
+    if place_id:
+        fav_item = next((f for f in fav_list if f["place_id"] == place_id), None)
+        return json_response(
+            fav_item or {"error": "Not found"}, 200 if fav_item else 400
+        )
+    return json_response(fav_list)
 
-        if action == "get":
-            place_id = request.args.get("place_id")
-            if place_id:
-                fav_item = next(
-                    (f for f in fav_list if f["place_id"] == place_id), None
-                )
-                result = fav_item or {"error": "Not found"}
-                status = 200 if fav_item else 400
-            else:
-                result = fav_list
 
-        if action == "set" and request.method == "POST":
-            place_id = request.args.get("place_id")
-            name = request.args.get("name")
-            if not place_id or not name:
-                return json_response({"error": "Missing place_id or name"}, 400)
+@app.route("/favorites/set", methods=["POST"])
+def favorites_set():
+    fav_list = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+    place_id = request.args.get("place_id")
+    name = request.args.get("name")
+    if not place_id or not name:
+        return json_response({"error": "Missing place_id or name"}, 400)
 
-            for fav_item in fav_list:
-                if fav_item["place_id"] == place_id:
-                    fav_item["name"] = name
-                    resp = json_response({"status": "updated"})
-                    save_cookie(resp, cfg.FAV_COOKIE, fav_list)
-                    return resp
-
-            if len(fav_list) >= cfg.MAX_FAVORITES:
-                return json_response({"error": "Limit reached"}, 409)
-
-            fav_list.append({"place_id": place_id, "name": name})
-            resp = json_response({"status": "added"})
+    for fav_item in fav_list:
+        if fav_item["place_id"] == place_id:
+            fav_item["name"] = name
+            resp = json_response({"status": "updated"})
             save_cookie(resp, cfg.FAV_COOKIE, fav_list)
             return resp
 
-        if action == "delete" and request.method == "POST":
-            place_id = request.args.get("place_id")
-            if not place_id:
-                return json_response({"error": "Missing place_id"}, 400)
-            if not any(f["place_id"] == place_id for f in fav_list):
-                return json_response({"error": "Not found"}, 400)
-            fav_list = [f for f in fav_list if f["place_id"] != place_id]
-            resp = json_response({"status": "deleted"})
-            save_cookie(resp, cfg.FAV_COOKIE, fav_list)
-            return resp
+    if len(fav_list) >= cfg.MAX_FAVORITES:
+        return json_response({"error": "Limit reached"}, 409)
 
-        if action == "clear" and request.method == "POST":
-            resp = json_response({"status": "cleared"})
-            save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
-            return resp
+    fav_list.append({"place_id": place_id, "name": name})
+    resp = json_response({"status": "added"})
+    save_cookie(resp, cfg.FAV_COOKIE, fav_list)
+    return resp
 
-        return json_response({"error": "Invalid action"}, 400)
 
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        logger.exception("Favorites route failed")
-        return json_response({"error": "Internal error"}, 500)
+@app.route("/favorites/delete", methods=["POST"])
+def favorites_delete():
+    fav_list = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+    place_id = request.args.get("place_id")
+    if not place_id:
+        return json_response({"error": "Missing place_id"}, 400)
+
+    if not any(f["place_id"] == place_id for f in fav_list):
+        return json_response({"error": "Not found"}, 400)
+
+    fav_list = [f for f in fav_list if f["place_id"] != place_id]
+    resp = json_response({"status": "deleted"})
+    save_cookie(resp, cfg.FAV_COOKIE, fav_list)
+    return resp
+
+
+@app.route("/favorites/clear", methods=["POST"])
+def favorites_clear():
+    resp = json_response({"status": "cleared"})
+    save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
+    return resp
 
 
 # -------------------------
