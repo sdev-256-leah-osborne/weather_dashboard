@@ -34,11 +34,11 @@ def load_cookie(name, default=None):
     raw = request.cookies.get(name)
     if not raw:
         return default
+
     try:
-        val = json.loads(raw)
-        return val
-    except Exception:
-        logger.warning(f"Invalid cookie detected: {name}")
+        return json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        logger.warning("Invalid cookie detected: %s", name)
         return default
 
 
@@ -52,8 +52,8 @@ def save_cookie(resp, name, value, max_age=cfg.MAX_COOKIE_AGE):
             samesite="Strict",
             secure=True,
         )
-    except Exception as e:
-        logger.error(f"Failed to save cookie {name}: {e}")
+    except (TypeError, ValueError):
+        logger.error("Failed to save cookie %s", name)
 
 
 # -------------------------
@@ -86,7 +86,6 @@ def sanitize_favorites(favs):
 def favorites_get():
     try:
         favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
-
         place_id = request.args.get("place_id")
 
         if place_id:
@@ -97,7 +96,7 @@ def favorites_get():
 
         return jsonify(favorites), 200
 
-    except Exception as e:
+    except Exception:
         logger.exception("favorites_get failed")
         return jsonify({"error": "Internal error"}), 500
 
@@ -125,12 +124,11 @@ def favorites_set():
             return jsonify({"error": "Limit reached"}), 409
 
         favorites.append({"place_id": place_id, "name": name})
-
         resp = jsonify({"status": "added"})
         save_cookie(resp, cfg.FAV_COOKIE, favorites)
         return resp
 
-    except Exception as e:
+    except Exception:
         logger.exception("favorites_set failed")
         return jsonify({"error": "Internal error"}), 500
 
@@ -153,7 +151,7 @@ def favorites_delete():
         save_cookie(resp, cfg.FAV_COOKIE, favorites)
         return resp
 
-    except Exception as e:
+    except Exception:
         logger.exception("favorites_delete failed")
         return jsonify({"error": "Internal error"}), 500
 
@@ -197,19 +195,19 @@ def call_api(url, params=None, raw=False):
         return (r if raw else r.json()), 200
 
     except requests.Timeout:
-        logger.error(f"Timeout calling API: {url}")
+        logger.error("Timeout calling API: %s", url)
         return {"error": "External service timed out"}, 504
 
-    except requests.HTTPError as e:
-        logger.error(f"HTTP error calling API {url}: {e}")
+    except requests.HTTPError:
+        logger.error("HTTP error calling API: %s", url)
         return {"error": "External service error"}, 502
 
-    except requests.RequestException as e:
-        logger.error(f"Request failure calling API {url}: {e}")
+    except requests.RequestException:
+        logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
 
-    except Exception as e:
-        logger.exception(f"Unhandled error calling API: {url}")
+    except Exception:
+        logger.exception("Unhandled error calling API: %s", url)
         return {"error": "Internal error"}, 500
 
 
@@ -222,11 +220,13 @@ def call_api(url, params=None, raw=False):
 def index():
     try:
         return render_template("index.html")
+
     except TemplateNotFound:
         logger.warning("Template index.html missing")
         abort(404)
-    except TemplateError as e:
-        logger.error(f"Template processing error: {e}")
+
+    except TemplateError:
+        logger.error("Template processing error")
         abort(500)
 
 
