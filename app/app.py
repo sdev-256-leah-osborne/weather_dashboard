@@ -1,6 +1,7 @@
 import json
 import logging
-from flask import Flask, render_template, request, jsonify, abort, make_response
+from flask import Flask, render_template, request, jsonify, abort, make_response, escape
+from flask_cors import CORS
 from jinja2 import TemplateNotFound, TemplateError
 import requests
 from .config import DebugConfig as cfg
@@ -9,6 +10,8 @@ from .config import DebugConfig as cfg
 # App + Logging
 # -------------------------
 app = Flask(__name__)
+CORS(app)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -332,7 +335,7 @@ def icon():
     data, status = call_api(url, raw=True)
 
     if status != 200:
-        return json_response(data, status)
+        return {"error": "Failed to fetch icon"}, status
 
     # Return SVG with correct headers
     resp = make_response(data)
