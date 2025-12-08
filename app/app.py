@@ -1,5 +1,6 @@
 import json
 import logging
+from functools import lru_cache
 from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
 import requests
@@ -152,31 +153,32 @@ def get_param(name):
 
 
 def call_api(url, params=None, raw=False):
+    """Unified API helper for JSON or raw content."""
     try:
         r = requests.get(
             url,
             params=params,
             timeout=(cfg.REQUESTS_CONNECT_TIMEOUT, cfg.REQUESTS_RESPONSE_TIMEOUT),
         )
-        r.raise_for_status()
-        return (r if raw else r.json()), 200
+        if r.status_code >= 400:
+            logger.error("HTTP error calling API: %s (%s)", url, r.status_code)
+            return {"error": "External service error"}, 502
+
+        if raw:
+            return r.content, 200
+        try:
+            return r.json(), 200
+        except ValueError:
+            logger.exception("Invalid JSON from API: %s", url)
+            return {"error": "Invalid response from external service"}, 502
 
     except requests.Timeout:
         logger.error("Timeout calling API: %s", url)
         return {"error": "External service timed out"}, 504
 
-    except requests.HTTPError:
-        logger.error("HTTP error calling API: %s", url)
-        return {"error": "External service error"}, 502
-
     except requests.RequestException:
         logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
-
-    except ValueError:
-        logger.exception("Value error when processing API response: %s", url)
-        return {"error": "Invalid response from external service"}, 502
-
 
 # -------------------------
 # Template route
@@ -270,3 +272,75 @@ def place_details():
         "geometry": result.get("geometry"),
     }
     return json_response(response)
+
+
+# Define all allowed icons
+# Whitelist of all valid mapped icon names (from your frontend map)
+ALLOWED_ICONS = {
+    "sunny",
+    "mostly_sunny",
+    "partly_cloudy",
+    "mostly_cloudy",
+    "cloudy",
+    "windy",
+    "wind_and_rain",
+    "showers",
+    "scattered_showers",
+    "heavy_showers",
+    "rain_light",
+    "rain_heavy",
+    "rain",
+    "drizzle",
+    "snow_showers",
+    "scattered_snow_showers",
+    "heavy_snow",
+    "snow_light",
+    "snow_heavy",
+    "blizzard",
+    "blowing_snow",
+    "flurries",
+    "wintry_mix",
+    "hail",
+    "sleet",
+    "freezing_rain",
+    "freezing_drizzle",
+    "thunderstorm",
+    "isolated_thunderstorms",
+    "scattered_thunderstorms",
+    "strong_thunderstorms",
+    "fog",
+    "haze",
+    "smoke",
+    "dust",
+}
+
+
+# Cache up to 50 icons
+@lru_cache(maxsize=50)
+def fetch_icon_cached(url):
+    return call_api(url, raw=True)
+
+
+@app.route("/icon")
+def icon():
+    icon_name = get_param("icon").lower()  # required
+    dark_mode = request.args.get("dark", "false").lower() == "true"
+
+    # Validate icon against whitelist
+    if icon_name not in ALLOWED_ICONS:
+        return json_response({"error": "Invalid icon"}, 400)
+
+    # Build URL
+    suffix = "_dark.svg" if dark_mode else ".svg"
+    url = f"https://maps.gstatic.com/weather/v1/{icon_name}{suffix}"
+
+    # Fetch icon (cached)
+    content, status = fetch_icon_cached(url)
+
+    if status != 200:
+        return json_response(content, status)
+
+    # Return SVG with correct headers
+    resp = make_response(content)
+    resp.headers["Content-Type"] = "image/svg+xml"
+    return resp, status
