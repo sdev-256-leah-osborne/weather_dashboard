@@ -180,6 +180,7 @@ def call_api(url, params=None, raw=False):
         logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
 
+
 # -------------------------
 # Template route
 # -------------------------
@@ -315,12 +316,6 @@ ALLOWED_ICONS = {
 }
 
 
-# Cache up to 50 icons
-@lru_cache(maxsize=50)
-def fetch_icon_cached(url):
-    return call_api(url, raw=True)
-
-
 @app.route("/icon")
 def icon():
     icon_name = get_param("icon").lower()  # required
@@ -335,12 +330,12 @@ def icon():
     url = f"https://maps.gstatic.com/weather/v1/{icon_name}{suffix}"
 
     # Fetch icon (cached)
-    content, status = fetch_icon_cached(url)
+    data, status = call_api(url, raw=True)
 
     if status != 200:
-        return json_response(content, status)
+        return json_response(data, status)
 
     # Return SVG with correct headers
-    resp = make_response(content)
+    resp = make_response(data)
     resp.headers["Content-Type"] = "image/svg+xml"
     return resp, status
