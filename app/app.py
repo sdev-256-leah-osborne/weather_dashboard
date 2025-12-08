@@ -288,31 +288,74 @@ def place_details():
     return json_response(response)
 
 
-# Cache up to 50 icons in memory
+# Define all allowed icons
+# Whitelist of all valid mapped icon names (from your frontend map)
+ALLOWED_ICONS = {
+    "sunny",
+    "mostly_sunny",
+    "partly_cloudy",
+    "mostly_cloudy",
+    "cloudy",
+    "windy",
+    "wind_and_rain",
+    "showers",
+    "scattered_showers",
+    "heavy_showers",
+    "rain_light",
+    "rain_heavy",
+    "rain",
+    "drizzle",
+    "snow_showers",
+    "scattered_snow_showers",
+    "heavy_snow",
+    "snow_light",
+    "snow_heavy",
+    "blizzard",
+    "blowing_snow",
+    "flurries",
+    "wintry_mix",
+    "hail",
+    "sleet",
+    "freezing_rain",
+    "freezing_drizzle",
+    "thunderstorm",
+    "isolated_thunderstorms",
+    "scattered_thunderstorms",
+    "strong_thunderstorms",
+    "fog",
+    "haze",
+    "smoke",
+    "dust",
+    "cloudy",  # include default
+}
+
+
+# Cache up to 50 icons
 @lru_cache(maxsize=50)
 def fetch_icon_cached(url):
-    content, status = call_api(url, raw=True)
-    return content, status
+    return call_api(url, raw=True)
 
 
 @app.route("/icon")
 def icon():
-    # Get the icon name and dark mode flag
-    icon_name = get_param("icon")  # required, e.g., "dust"
+    icon_name = get_param("icon").lower()  # required
     dark_mode = request.args.get("dark", "false").lower() == "true"
 
-    # Construct the full URL
+    # Validate icon against whitelist
+    if icon_name not in ALLOWED_ICONS:
+        return json_response({"error": "Invalid icon"}, 400)
+
+    # Build URL
     suffix = "_dark.svg" if dark_mode else ".svg"
     url = f"https://maps.gstatic.com/weather/v1/{icon_name}{suffix}"
 
-    # Fetch the icon safely using the unified call_api
+    # Fetch icon (cached)
     content, status = fetch_icon_cached(url)
 
-    # If there was an error, return JSON response
     if status != 200:
         return json_response(content, status)
 
-    # Return the SVG with correct content type
+    # Return SVG with correct headers
     resp = make_response(content)
     resp.headers["Content-Type"] = "image/svg+xml"
     return resp, status
