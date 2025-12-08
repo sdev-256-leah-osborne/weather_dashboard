@@ -1,14 +1,6 @@
 import json
 import logging
-from flask import (
-    Flask,
-    render_template,
-    request,
-    jsonify,
-    abort,
-    make_response,
-    Response,
-)
+from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
 import requests
 from .config import DebugConfig as cfg
@@ -37,8 +29,7 @@ def load_cookie(name, default=None):
     if not raw:
         return default
     try:
-        val = json.loads(raw)
-        return val
+        return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         logger.warning("Invalid cookie detected: %s", name)
         return default
@@ -80,63 +71,68 @@ def sanitize_favorites(favs):
 
 
 # -------------------------
-# Favorites Route (consolidated)
+# Favorites Route
 # -------------------------
 
 
 @app.route("/favorites/<action>", methods=["GET", "POST"])
-def favorites(action):
+def favorites_route(action):
     try:
-        favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+        fav_list = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+        status = 200
+        result = {}
 
         if action == "get":
             place_id = request.args.get("place_id")
             if place_id:
-                fav = next((f for f in favorites if f["place_id"] == place_id), None)
-                return json_response(fav or {"error": "Not found"}, 200 if fav else 400)
-            return json_response(favorites)
+                fav_item = next(
+                    (f for f in fav_list if f["place_id"] == place_id), None
+                )
+                result = fav_item or {"error": "Not found"}
+                status = 200 if fav_item else 400
+            else:
+                result = fav_list
 
-        elif action == "set" and request.method == "POST":
-            place_id, name = request.args.get("place_id"), request.args.get("name")
+        if action == "set" and request.method == "POST":
+            place_id = request.args.get("place_id")
+            name = request.args.get("name")
             if not place_id or not name:
                 return json_response({"error": "Missing place_id or name"}, 400)
 
-            for fav in favorites:
-                if fav["place_id"] == place_id:
-                    fav["name"] = name
+            for fav_item in fav_list:
+                if fav_item["place_id"] == place_id:
+                    fav_item["name"] = name
                     resp = json_response({"status": "updated"})
-                    save_cookie(resp, cfg.FAV_COOKIE, favorites)
+                    save_cookie(resp, cfg.FAV_COOKIE, fav_list)
                     return resp
 
-            if len(favorites) >= cfg.MAX_FAVORITES:
+            if len(fav_list) >= cfg.MAX_FAVORITES:
                 return json_response({"error": "Limit reached"}, 409)
 
-            favorites.append({"place_id": place_id, "name": name})
+            fav_list.append({"place_id": place_id, "name": name})
             resp = json_response({"status": "added"})
-            save_cookie(resp, cfg.FAV_COOKIE, favorites)
+            save_cookie(resp, cfg.FAV_COOKIE, fav_list)
             return resp
 
-        elif action == "delete" and request.method == "POST":
+        if action == "delete" and request.method == "POST":
             place_id = request.args.get("place_id")
             if not place_id:
                 return json_response({"error": "Missing place_id"}, 400)
-
-            if not any(f["place_id"] == place_id for f in favorites):
+            if not any(f["place_id"] == place_id for f in fav_list):
                 return json_response({"error": "Not found"}, 400)
-
-            favorites = [f for f in favorites if f["place_id"] != place_id]
+            fav_list = [f for f in fav_list if f["place_id"] != place_id]
             resp = json_response({"status": "deleted"})
-            save_cookie(resp, cfg.FAV_COOKIE, favorites)
+            save_cookie(resp, cfg.FAV_COOKIE, fav_list)
             return resp
 
-        elif action == "clear" and request.method == "POST":
+        if action == "clear" and request.method == "POST":
             resp = json_response({"status": "cleared"})
             save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
             return resp
 
         return json_response({"error": "Invalid action"}, 400)
 
-    except Exception:
+    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
         logger.exception("Favorites route failed")
         return json_response({"error": "Internal error"}, 500)
 
@@ -149,7 +145,7 @@ def favorites(action):
 def get_param(name):
     val = request.args.get(name)
     if not val:
-        return abort(make_response(json_response({"error": f"Missing {name}"}), 400))
+        abort(make_response(json_response({"error": f"Missing {name}"}), 400))
     return val
 
 
@@ -207,52 +203,32 @@ def index():
 # -------------------------
 
 
-@app.route("/weather/current")
-def current_weather():
+def weather_route(endpoint):
     lat = get_param("lat")
     lng = get_param("lng")
-
-    url = "https://weather.googleapis.com/v1/currentConditions:lookup"
+    url = f"https://weather.googleapis.com/v1/{endpoint}"
     params = {
         "key": cfg.GOOGLE_API_KEY,
         "location.latitude": lat,
         "location.longitude": lng,
     }
-
     data, status = call_api(url, params)
     return json_response(data, status)
+
+
+@app.route("/weather/current")
+def current_weather():
+    return weather_route("currentConditions:lookup")
 
 
 @app.route("/weather/daily")
 def daily_weather():
-    lat = get_param("lat")
-    lng = get_param("lng")
-
-    url = "https://weather.googleapis.com/v1/forecast/days:lookup"
-    params = {
-        "key": cfg.GOOGLE_API_KEY,
-        "location.latitude": lat,
-        "location.longitude": lng,
-    }
-
-    data, status = call_api(url, params)
-    return json_response(data, status)
+    return weather_route("forecast/days:lookup")
 
 
 @app.route("/weather/hourly")
 def hourly_weather():
-    lat = get_param("lat")
-    lng = get_param("lng")
-
-    url = "https://weather.googleapis.com/v1/forecast/hours:lookup"
-    params = {
-        "key": cfg.GOOGLE_API_KEY,
-        "location.latitude": lat,
-        "location.longitude": lng,
-    }
-
-    data, status = call_api(url, params)
-    return json_response(data, status)
+    return weather_route("forecast/hours:lookup")
 
 
 # -------------------------
@@ -260,14 +236,17 @@ def hourly_weather():
 # -------------------------
 
 
+def places_api(url, params):
+    data, status = call_api(url, params)
+    return json_response(data, status)
+
+
 @app.route("/autocomplete")
 def autocomplete():
     query = get_param("query")
     url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
     params = {"input": query, "key": cfg.GOOGLE_API_KEY}
-
-    data, status = call_api(url, params)
-    return json_response(data, status)
+    return places_api(url, params)
 
 
 @app.route("/place_details")
@@ -281,7 +260,6 @@ def place_details():
     }
 
     data, status = call_api(url, params)
-
     if status != 200:
         return json_response(data, status)
 
