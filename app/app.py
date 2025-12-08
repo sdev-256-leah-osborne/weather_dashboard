@@ -16,9 +16,7 @@ from .config import DebugConfig as cfg
 # -------------------------
 # App + Logging
 # -------------------------
-
 app = Flask(__name__)
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -26,17 +24,21 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # -------------------------
-# Cookie Helpers
+# Helpers
 # -------------------------
+
+
+def json_response(data, status=200):
+    return jsonify(data), status
 
 
 def load_cookie(name, default=None):
     raw = request.cookies.get(name)
     if not raw:
         return default
-
     try:
-        return json.loads(raw)
+        val = json.loads(raw)
+        return val
     except (json.JSONDecodeError, TypeError):
         logger.warning("Invalid cookie detected: %s", name)
         return default
@@ -78,96 +80,65 @@ def sanitize_favorites(favs):
 
 
 # -------------------------
-# Favorites Routes (Safe)
+# Favorites Route (consolidated)
 # -------------------------
 
 
-@app.route("/favorites/get", methods=["GET"])
-def favorites_get():
-    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
+@app.route("/favorites/<action>", methods=["GET", "POST"])
+def favorites(action):
     try:
         favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
-        place_id = request.args.get("place_id")
 
-        if place_id:
-            fav = next((f for f in favorites if f["place_id"] == place_id), None)
-            if not fav:
-                return jsonify({"error": "Not found"}), 400
-            return jsonify(fav), 200
+        if action == "get":
+            place_id = request.args.get("place_id")
+            if place_id:
+                fav = next((f for f in favorites if f["place_id"] == place_id), None)
+                return json_response(fav or {"error": "Not found"}, 200 if fav else 400)
+            return json_response(favorites)
 
-        return jsonify(favorites), 200
+        elif action == "set" and request.method == "POST":
+            place_id, name = request.args.get("place_id"), request.args.get("name")
+            if not place_id or not name:
+                return json_response({"error": "Missing place_id or name"}, 400)
 
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        logger.exception("favorites_get failed")
-        return jsonify({"error": "Internal error"}), 500
+            for fav in favorites:
+                if fav["place_id"] == place_id:
+                    fav["name"] = name
+                    resp = json_response({"status": "updated"})
+                    save_cookie(resp, cfg.FAV_COOKIE, favorites)
+                    return resp
 
+            if len(favorites) >= cfg.MAX_FAVORITES:
+                return json_response({"error": "Limit reached"}, 409)
 
-@app.route("/favorites/set", methods=["POST"])
-def favorites_set():
-    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
-    try:
-        place_id = request.args.get("place_id")
-        name = request.args.get("name")
+            favorites.append({"place_id": place_id, "name": name})
+            resp = json_response({"status": "added"})
+            save_cookie(resp, cfg.FAV_COOKIE, favorites)
+            return resp
 
-        if not place_id or not name:
-            return jsonify({"error": "Missing place_id or name"}), 400
+        elif action == "delete" and request.method == "POST":
+            place_id = request.args.get("place_id")
+            if not place_id:
+                return json_response({"error": "Missing place_id"}, 400)
 
-        favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
+            if not any(f["place_id"] == place_id for f in favorites):
+                return json_response({"error": "Not found"}, 400)
 
-        # update existing
-        for fav in favorites:
-            if fav["place_id"] == place_id:
-                fav["name"] = name
-                resp = jsonify({"status": "updated"})
-                save_cookie(resp, cfg.FAV_COOKIE, favorites)
-                return resp
+            favorites = [f for f in favorites if f["place_id"] != place_id]
+            resp = json_response({"status": "deleted"})
+            save_cookie(resp, cfg.FAV_COOKIE, favorites)
+            return resp
 
-        if len(favorites) >= cfg.MAX_FAVORITES:
-            return jsonify({"error": "Limit reached"}), 409
+        elif action == "clear" and request.method == "POST":
+            resp = json_response({"status": "cleared"})
+            save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
+            return resp
 
-        favorites.append({"place_id": place_id, "name": name})
-        resp = jsonify({"status": "added"})
-        save_cookie(resp, cfg.FAV_COOKIE, favorites)
-        return resp
+        return json_response({"error": "Invalid action"}, 400)
 
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        logger.exception("favorites_set failed")
-        return jsonify({"error": "Internal error"}), 500
-
-
-@app.route("/favorites/delete", methods=["POST"])
-def favorites_delete():
-    # Possible exceptions handled: TypeError, ValueError, KeyError, JSON errors
-    try:
-        place_id = request.args.get("place_id")
-        if not place_id:
-            return jsonify({"error": "Missing place_id"}), 400
-
-        favorites = sanitize_favorites(load_cookie(cfg.FAV_COOKIE, default=[]))
-
-        if not any(f["place_id"] == place_id for f in favorites):
-            return jsonify({"error": "Not found"}), 400
-
-        favorites = [f for f in favorites if f["place_id"] != place_id]
-        resp = jsonify({"status": "deleted"})
-        save_cookie(resp, cfg.FAV_COOKIE, favorites)
-        return resp
-
-    except (TypeError, ValueError, KeyError, json.JSONDecodeError):
-        logger.exception("favorites_delete failed")
-        return jsonify({"error": "Internal error"}), 500
-
-
-@app.route("/favorites/clear", methods=["POST"])
-def favorites_clear():
-    # Possible exceptions handled: TypeError, ValueError
-    try:
-        resp = jsonify({"status": "cleared"})
-        save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
-        return resp
-    except (TypeError, ValueError):
-        logger.exception("favorites_clear failed")
-        return jsonify({"error": "Internal error"}), 500
+    except Exception:
+        logger.exception("Favorites route failed")
+        return json_response({"error": "Internal error"}, 500)
 
 
 # -------------------------
@@ -178,7 +149,7 @@ def favorites_clear():
 def get_param(name):
     val = request.args.get(name)
     if not val:
-        return abort(make_response(jsonify({"error": f"Missing {name}"}), 400))
+        return abort(make_response(json_response({"error": f"Missing {name}"}), 400))
     return val
 
 
@@ -210,7 +181,6 @@ def call_api(url, params=None, raw=False):
         return {"error": "Service unavailable"}, 502
 
     except ValueError:
-        # JSON decoding or other value errors
         logger.exception("Value error when processing API response: %s", url)
         return {"error": "Invalid response from external service"}, 502
 
@@ -250,7 +220,7 @@ def current_weather():
     }
 
     data, status = call_api(url, params)
-    return jsonify(data), status
+    return json_response(data, status)
 
 
 @app.route("/weather/daily")
@@ -266,7 +236,7 @@ def daily_weather():
     }
 
     data, status = call_api(url, params)
-    return jsonify(data), status
+    return json_response(data, status)
 
 
 @app.route("/weather/hourly")
@@ -282,7 +252,7 @@ def hourly_weather():
     }
 
     data, status = call_api(url, params)
-    return jsonify(data), status
+    return json_response(data, status)
 
 
 # -------------------------
@@ -293,18 +263,16 @@ def hourly_weather():
 @app.route("/autocomplete")
 def autocomplete():
     query = get_param("query")
-
     url = "https://maps.googleapis.com/maps/api/place/autocomplete/json"
     params = {"input": query, "key": cfg.GOOGLE_API_KEY}
 
     data, status = call_api(url, params)
-    return jsonify(data), status
+    return json_response(data, status)
 
 
 @app.route("/place_details")
 def place_details():
     place_id = get_param("place_id")
-
     url = "https://maps.googleapis.com/maps/api/place/details/json"
     params = {
         "place_id": place_id,
@@ -315,10 +283,10 @@ def place_details():
     data, status = call_api(url, params)
 
     if status != 200:
-        return jsonify(data), status
+        return json_response(data, status)
 
     if not isinstance(data, dict) or data.get("status") != "OK":
-        return jsonify({"error": "Lookup failed"}), 400
+        return json_response({"error": "Lookup failed"}, 400)
 
     result = data.get("result", {})
     response = {
@@ -326,25 +294,27 @@ def place_details():
         "address": result.get("formatted_address"),
         "geometry": result.get("geometry"),
     }
-    return jsonify(response), 200
+    return json_response(response)
 
 
 # -------------------------
-# Icon Proxy (Safe)
+# Icon Proxy (CWE-918 handled via fixed URL)
 # -------------------------
 
 
 @app.route("/icon")
 def icon():
-    icon_url = request.args.get("url")
-    if not icon_url:
-        return jsonify({"error": "Missing url"}), 400
+    # Only allow a safe, hardcoded base URL
+    base_url = "https://maps.gstatic.com/weather/v1/"
+    icon_name = request.args.get("icon")
+    if not icon_name:
+        return json_response({"error": "Missing icon"}, 400)
 
-    resp, status = call_api(icon_url, raw=True)
+    safe_url = f"{base_url}{icon_name}.svg"
+    resp, status = call_api(safe_url, raw=True)
     if status != 200:
-        return jsonify({"error": "Failed to fetch icon"}), status
+        return json_response({"error": "Failed to fetch icon"}, status)
 
-    # resp is a requests.Response when raw=True
     return Response(
         resp.content,
         status=200,
