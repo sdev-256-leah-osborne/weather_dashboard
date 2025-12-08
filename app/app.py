@@ -1,6 +1,6 @@
 import json
 import logging
-from flask import Flask, render_template, request, jsonify, abort, make_response, escape
+from flask import Flask, render_template, request, jsonify, abort, make_response
 from flask_cors import CORS
 from jinja2 import TemplateNotFound, TemplateError
 import requests
