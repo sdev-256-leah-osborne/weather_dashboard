@@ -312,7 +312,6 @@ ALLOWED_ICONS = {
     "haze",
     "smoke",
     "dust",
-    "cloudy",  # include default
 }
 
 
