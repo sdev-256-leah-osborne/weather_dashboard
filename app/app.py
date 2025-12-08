@@ -295,29 +295,3 @@ def place_details():
         "geometry": result.get("geometry"),
     }
     return json_response(response)
-
-
-# -------------------------
-# Icon Proxy (CWE-918 handled via fixed URL)
-# -------------------------
-
-
-@app.route("/icon")
-def icon():
-    # Only allow a safe, hardcoded base URL
-    base_url = "https://maps.gstatic.com/weather/v1/"
-    icon_name = request.args.get("icon")
-    if not icon_name:
-        return json_response({"error": "Missing icon"}, 400)
-
-    safe_url = f"{base_url}{icon_name}.svg"
-    resp, status = call_api(safe_url, raw=True)
-    if status != 200:
-        return json_response({"error": "Failed to fetch icon"}, status)
-
-    return Response(
-        resp.content,
-        status=200,
-        content_type=resp.headers.get("Content-Type", "image/svg+xml"),
-        headers={"Access-Control-Allow-Origin": "*"},
-    )
