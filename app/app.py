@@ -1,8 +1,8 @@
 import json
 import logging
+from functools import lru_cache
 from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
-from functools import lru_cache
 import requests
 from .config import DebugConfig as cfg
 
@@ -153,46 +153,32 @@ def get_param(name):
 
 
 def call_api(url, params=None, raw=False):
-    """
-    Unified API helper for JSON or raw content.
-    - raw=False: expects JSON and returns dict
-    - raw=True: returns raw content (bytes)
-    Returns: (data, status_code)
-    """
+    """Unified API helper for JSON or raw content."""
     try:
         r = requests.get(
             url,
             params=params,
             timeout=(cfg.REQUESTS_CONNECT_TIMEOUT, cfg.REQUESTS_RESPONSE_TIMEOUT),
         )
-
-        # Handle HTTP errors manually
         if r.status_code >= 400:
             logger.error("HTTP error calling API: %s (%s)", url, r.status_code)
             return {"error": "External service error"}, 502
 
-        # Return raw content or JSON
         if raw:
             return r.content, 200
-        else:
-            try:
-                return r.json(), 200
-            except ValueError:
-                logger.exception("Value error when processing API response: %s", url)
-                return {"error": "Invalid response from external service"}, 502
+        try:
+            return r.json(), 200
+        except ValueError:
+            logger.exception("Invalid JSON from API: %s", url)
+            return {"error": "Invalid response from external service"}, 502
 
     except requests.Timeout:
         logger.error("Timeout calling API: %s", url)
         return {"error": "External service timed out"}, 504
 
-    except requests.HTTPError:
-        logger.error("HTTP error calling API: %s", url)
-        return {"error": "External service error"}, 502
-
     except requests.RequestException:
         logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
-
 
 # -------------------------
 # Template route
