@@ -1,6 +1,5 @@
 import json
 import logging
-from functools import lru_cache
 from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
 import requests
