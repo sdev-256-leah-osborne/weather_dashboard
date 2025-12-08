@@ -2,6 +2,7 @@ import json
 import logging
 from flask import Flask, render_template, request, jsonify, abort, make_response
 from jinja2 import TemplateNotFound, TemplateError
+from functools import lru_cache
 import requests
 from .config import DebugConfig as cfg
 
@@ -152,14 +153,33 @@ def get_param(name):
 
 
 def call_api(url, params=None, raw=False):
+    """
+    Unified API helper for JSON or raw content.
+    - raw=False: expects JSON and returns dict
+    - raw=True: returns raw content (bytes)
+    Returns: (data, status_code)
+    """
     try:
         r = requests.get(
             url,
             params=params,
             timeout=(cfg.REQUESTS_CONNECT_TIMEOUT, cfg.REQUESTS_RESPONSE_TIMEOUT),
         )
-        r.raise_for_status()
-        return (r if raw else r.json()), 200
+
+        # Handle HTTP errors manually
+        if r.status_code >= 400:
+            logger.error("HTTP error calling API: %s (%s)", url, r.status_code)
+            return {"error": "External service error"}, 502
+
+        # Return raw content or JSON
+        if raw:
+            return r.content, 200
+        else:
+            try:
+                return r.json(), 200
+            except ValueError:
+                logger.exception("Value error when processing API response: %s", url)
+                return {"error": "Invalid response from external service"}, 502
 
     except requests.Timeout:
         logger.error("Timeout calling API: %s", url)
@@ -172,10 +192,6 @@ def call_api(url, params=None, raw=False):
     except requests.RequestException:
         logger.error("Request failure calling API: %s", url)
         return {"error": "Service unavailable"}, 502
-
-    except ValueError:
-        logger.exception("Value error when processing API response: %s", url)
-        return {"error": "Invalid response from external service"}, 502
 
 
 # -------------------------
@@ -270,3 +286,33 @@ def place_details():
         "geometry": result.get("geometry"),
     }
     return json_response(response)
+
+
+# Cache up to 50 icons in memory
+@lru_cache(maxsize=50)
+def fetch_icon_cached(url):
+    content, status = call_api(url, raw=True)
+    return content, status
+
+
+@app.route("/icon")
+def icon():
+    # Get the icon name and dark mode flag
+    icon_name = get_param("icon")  # required, e.g., "dust"
+    dark_mode = request.args.get("dark", "false").lower() == "true"
+
+    # Construct the full URL
+    suffix = "_dark.svg" if dark_mode else ".svg"
+    url = f"https://maps.gstatic.com/weather/v1/{icon_name}{suffix}"
+
+    # Fetch the icon safely using the unified call_api
+    content, status = fetch_icon_cached(url)
+
+    # If there was an error, return JSON response
+    if status != 200:
+        return json_response(content, status)
+
+    # Return the SVG with correct content type
+    resp = make_response(content)
+    resp.headers["Content-Type"] = "image/svg+xml"
+    return resp, status
