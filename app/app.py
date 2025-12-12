@@ -46,7 +46,7 @@ def save_cookie(resp, name, value, max_age=cfg.MAX_COOKIE_AGE):
             max_age=max_age,
             httponly=True,
             samesite="Strict",
-            secure=True,
+            secure=request.is_secure,
         )
     except (TypeError, ValueError):
         logger.error("Failed to save cookie %s", name)
@@ -101,7 +101,8 @@ def favorites_set():
     for fav_item in fav_list:
         if fav_item["place_id"] == place_id:
             fav_item["name"] = name
-            resp = json_response({"status": "updated"})
+            # resp = json_response({"status": "updated"})
+            resp = make_response(jsonify({"status": "updated"}))
             save_cookie(resp, cfg.FAV_COOKIE, fav_list)
             return resp
 
@@ -109,7 +110,8 @@ def favorites_set():
         return json_response({"error": "Limit reached"}, 409)
 
     fav_list.append({"place_id": place_id, "name": name})
-    resp = json_response({"status": "added"})
+    # resp = json_response({"status": "added"})
+    resp = make_response(jsonify({"status": "added"}))
     save_cookie(resp, cfg.FAV_COOKIE, fav_list)
     return resp
 
@@ -125,14 +127,16 @@ def favorites_delete():
         return json_response({"error": "Not found"}, 400)
 
     fav_list = [f for f in fav_list if f["place_id"] != place_id]
-    resp = json_response({"status": "deleted"})
+    # resp = json_response({"status": "deleted"})
+    resp = make_response(jsonify({"status": "deleted"}))
     save_cookie(resp, cfg.FAV_COOKIE, fav_list)
     return resp
 
 
 @app.route("/favorites/clear", methods=["POST"])
 def favorites_clear():
-    resp = json_response({"status": "cleared"})
+    # resp = json_response({"status": "cleared"})
+    resp = make_response(jsonify({"status": "cleared"}))
     save_cookie(resp, cfg.FAV_COOKIE, "", max_age=0)
     return resp
 
