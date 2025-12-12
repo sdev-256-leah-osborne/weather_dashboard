@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def json_response(data, status=200):
-    return jsonify(data), status
+    """
+    Return a proper Flask Response object that can have cookies set.
+    """
+    resp = make_response(jsonify(data), status)
+    return resp
 
 
 def load_cookie(name, default=None):
@@ -289,36 +293,27 @@ ALLOWED_ICONS = {
     "partly_cloudy",
     "mostly_cloudy",
     "cloudy",
-    "windy",
-    "wind_and_rain",
+    "windy_breezy",
     "showers",
-    "scattered_showers",
-    "heavy_showers",
-    "rain_light",
-    "rain_heavy",
-    "rain",
     "drizzle",
-    "snow_showers",
-    "scattered_snow_showers",
-    "heavy_snow",
-    "snow_light",
-    "snow_heavy",
-    "blizzard",
-    "blowing_snow",
+    "scattered_showers",
+    "heavy",
     "flurries",
+    "snow_showers",
+    "scattered_snow",
+    "heavy_snow",
+    "mostly_clear",
+    "partly_clear",
+    "mostly_cloudy_night",
+    "blowing_snow",
     "wintry_mix",
-    "hail",
+    "sleet_hail",
     "sleet",
     "freezing_rain",
     "freezing_drizzle",
-    "thunderstorm",
-    "isolated_thunderstorms",
-    "scattered_thunderstorms",
-    "strong_thunderstorms",
-    "fog",
-    "haze",
-    "smoke",
-    "dust",
+    "strong_tstorms",
+    "isolated_tstorms",
+    "clear",
 }
 
 

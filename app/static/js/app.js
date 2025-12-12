@@ -4,96 +4,121 @@ let currentCity = null;
 let currentFavorites = [];
 let currentWeatherData = null;
 let currentForecastData = null;
+let isDaytime = null;
 let temperatureUnit = localStorage.getItem('tempUnit') || 'C';
 let windUnit = localStorage.getItem('windUnit') || 'km/h';
 
-const WEATHER_ICON_BASE_URL = 'https://maps.gstatic.com/weather/v1/';
-
-const WEATHER_ICON_MAP = {
-    'clear': 'sunny',
-    'mostly_clear': 'mostly_sunny',
-    'partly_cloudy': 'partly_cloudy',
-    'mostly_cloudy': 'mostly_cloudy',
-    'cloudy': 'cloudy',
-    'overcast': 'cloudy',
-    'windy': 'windy',
-    'wind_and_rain': 'wind_and_rain',
-    'light_rain_showers': 'showers',
-    'chance_of_showers': 'showers',
-    'scattered_showers': 'scattered_showers',
-    'rain_showers': 'showers',
-    'showers': 'showers',
-    'heavy_rain_showers': 'heavy_showers',
-    'light_to_moderate_rain': 'rain_light',
-    'moderate_to_heavy_rain': 'rain_heavy',
-    'rain': 'rain',
-    'light_rain': 'rain_light',
-    'heavy_rain': 'rain_heavy',
-    'rain_periodically_heavy': 'rain_heavy',
-    'drizzle': 'drizzle',
-    'light_snow_showers': 'snow_showers',
-    'chance_of_snow_showers': 'snow_showers',
-    'scattered_snow_showers': 'scattered_snow_showers',
-    'snow_showers': 'snow_showers',
-    'heavy_snow_showers': 'heavy_snow',
-    'light_to_moderate_snow': 'snow_light',
-    'moderate_to_heavy_snow': 'snow_heavy',
-    'snow': 'snow',
-    'light_snow': 'snow_light',
-    'heavy_snow': 'heavy_snow',
-    'snowstorm': 'blizzard',
-    'snow_periodically_heavy': 'heavy_snow',
-    'heavy_snow_storm': 'blizzard',
-    'blowing_snow': 'blowing_snow',
-    'flurries': 'flurries',
-    'rain_and_snow': 'wintry_mix',
-    'wintry_mix': 'wintry_mix',
-    'hail': 'hail',
-    'hail_showers': 'hail',
-    'sleet': 'sleet',
-    'freezing_rain': 'freezing_rain',
-    'freezing_drizzle': 'freezing_drizzle',
-    'thunderstorm': 'thunderstorm',
-    'thundershower': 'isolated_thunderstorms',
-    'light_thunderstorm_rain': 'isolated_thunderstorms',
-    'scattered_thunderstorms': 'scattered_thunderstorms',
-    'heavy_thunderstorm': 'strong_thunderstorms',
-    'strong_thunderstorms': 'strong_thunderstorms',
-    'fog': 'fog',
-    'mist': 'fog',
-    'haze': 'haze',
-    'smoke': 'smoke',
-    'dust': 'dust',
-    'default': 'cloudy'
+const WEATHER_ICON_DAY_MAP = {
+    'CLEAR': 'sunny',
+    'MOSTLY_CLEAR': 'mostly_sunny',
+    'PARTLY_CLOUDY': 'partly_cloudy',
+    'MOSTLY_CLOUDY': 'mostly_cloudy',
+    'CLOUDY': 'cloudy',
+    'WINDY': 'windy_breezy',
+    'WIND_AND_RAIN': 'showers',
+    'LIGHT_RAIN_SHOWERS': 'drizzle',
+    'CHANCE_OF_SHOWERS': 'drizzle',
+    'SCATTERED_SHOWERS': 'scattered_showers',
+    'RAIN_SHOWERS': 'showers',
+    'HEAVY_RAIN_SHOWERS': 'heavy',
+    'LIGHT_TO_MODERATE_RAIN': 'showers',
+    'MODERATE_TO_HEAVY_RAIN': 'heavy',
+    'RAIN': 'showers',
+    'LIGHT_RAIN': 'drizzle',
+    'HEAVY_RAIN': 'heavy',
+    'RAIN_PERIODICALLY_HEAVY': 'heavy',
+    'LIGHT_SNOW_SHOWERS': 'flurries',
+    'CHANCE_OF_SNOW_SHOWERS': 'snow_showers',
+    'SCATTERED_SNOW_SHOWERS': 'scattered_snow',
+    'SNOW_SHOWERS': 'scattered_snow',
+    'HEAVY_SNOW_SHOWERS': 'heavy_snow',
+    'LIGHT_TO_MODERATE_SNOW': 'snow_showers',
+    'MODERATE_TO_HEAVY_SNOW': 'heavy_snow',
+    'SNOW': 'snow_showers',
+    'LIGHT_SNOW': 'flurries',
+    'HEAVY_SNOW': 'heavy_snow',
+    'SNOWSTORM': 'snow_showers',
+    'SNOW_PERIODICALLY_HEAVY': 'heavy_snow',
+    'HEAVY_SNOW_STORM': 'heavy_snow',
+    'BLOWING_SNOW': 'blowing_snow',
+    'RAIN_AND_SNOW': 'wintry_mix',
+    'WINTRY_MIX': 'wintry_mix',
+    'HAIL': 'sleet_hail',
+    'HAIL_SHOWERS': 'wintry_mix',
+    'SLEET': 'sleet',
+    'FREEZING_RAIN': 'freezing_rain',
+    'FREEZING_DRIZZLE': 'freezing_drizzle',
+    'THUNDERSTORM': 'strong_tstorms',
+    'THUNDERSHOWER': 'strong_tstorms',
+    'LIGHT_THUNDERSTORM_RAIN': 'strong_tstorms',
+    'SCATTERED_THUNDERSTORMS': 'isolated_tstorms',
+    'HEAVY_THUNDERSTORM': 'strong_tstorms',
+    'DEFAULT': 'cloudy'
 };
 
-function getWeatherIconUrl(weatherCondition) {
-    if (weatherCondition && weatherCondition.iconBaseUri) {
-        return `${weatherCondition.iconBaseUri}.svg`;
-    }
-    const conditionType = weatherCondition?.type?.toLowerCase() || 'default';
-    return getIconUrlFromConditionType(conditionType);
+const WEATHER_ICON_NIGHT_MAP = {
+    'CLEAR': 'clear',
+    'MOSTLY_CLEAR': 'mostly_clear',
+    'PARTLY_CLOUDY': 'partly_clear',
+    'MOSTLY_CLOUDY': 'mostly_cloudy_night',
+    'CLOUDY': 'cloudy',
+    'WINDY': 'clear',
+    'WIND_AND_RAIN': 'showers',
+    'LIGHT_RAIN_SHOWERS': 'drizzle',
+    'CHANCE_OF_SHOWERS': 'drizzle',
+    'SCATTERED_SHOWERS': 'scattered_showers',
+    'RAIN_SHOWERS': 'showers',
+    'HEAVY_RAIN_SHOWERS': 'heavy',
+    'LIGHT_TO_MODERATE_RAIN': 'showers',
+    'MODERATE_TO_HEAVY_RAIN': 'heavy',
+    'RAIN': 'showers',
+    'LIGHT_RAIN': 'drizzle',
+    'HEAVY_RAIN': 'heavy',
+    'RAIN_PERIODICALLY_HEAVY': 'heavy',
+    'LIGHT_SNOW_SHOWERS': 'flurries',
+    'CHANCE_OF_SNOW_SHOWERS': 'snow_showers',
+    'SCATTERED_SNOW_SHOWERS': 'scattered_snow',
+    'SNOW_SHOWERS': 'scattered_snow',
+    'HEAVY_SNOW_SHOWERS': 'heavy_snow',
+    'LIGHT_TO_MODERATE_SNOW': 'snow_showers',
+    'MODERATE_TO_HEAVY_SNOW': 'heavy_snow',
+    'SNOW': 'snow_showers',
+    'LIGHT_SNOW': 'flurries',
+    'HEAVY_SNOW': 'heavy_snow',
+    'SNOWSTORM': 'snow_showers',
+    'SNOW_PERIODICALLY_HEAVY': 'heavy_snow',
+    'HEAVY_SNOW_STORM': 'heavy_snow',
+    'BLOWING_SNOW': 'blowing_snow',
+    'RAIN_AND_SNOW': 'wintry_mix',
+    'WINTRY_MIX': 'wintry_mix',
+    'HAIL': 'sleet_hail',
+    'HAIL_SHOWERS': 'wintry_mix',
+    'SLEET': 'sleet',
+    'FREEZING_RAIN': 'freezing_rain',
+    'FREEZING_DRIZZLE': 'freezing_drizzle',
+    'THUNDERSTORM': 'strong_tstorms',
+    'THUNDERSHOWER': 'strong_tstorms',
+    'LIGHT_THUNDERSTORM_RAIN': 'strong_tstorms',
+    'SCATTERED_THUNDERSTORMS': 'isolated_tstorms',
+    'HEAVY_THUNDERSTORM': 'strong_tstorms',
+    'DEFAULT': 'cloudy'
+};
+
+function getWeatherIconUrl(weatherCondition, darkMode = false, useDay = true) {
+    const conditionType = weatherCondition?.type || 'DEFAULT';
+    const iconMap = useDay ? WEATHER_ICON_DAY_MAP : WEATHER_ICON_NIGHT_MAP;
+    const iconName = iconMap[conditionType] || 'cloudy';
+
+    return `/icon?icon=${iconName}${darkMode ? '&dark=true' : ''}`;
 }
 
-function getIconUrlFromConditionType(conditionType) {
-    if (WEATHER_ICON_MAP[conditionType]) {
-        return `${WEATHER_ICON_BASE_URL}${WEATHER_ICON_MAP[conditionType]}.svg`;
-    }
-    for (const [key, iconName] of Object.entries(WEATHER_ICON_MAP)) {
-        if (conditionType.includes(key)) {
-            return `${WEATHER_ICON_BASE_URL}${iconName}.svg`;
-        }
-    }
-    return `${WEATHER_ICON_BASE_URL}cloudy.svg`;
-}
-
-function createWeatherIconElement(weatherCondition, altText = 'Weather', className = 'weather-icon-img') {
+function createWeatherIconElement(weatherCondition, altText = 'Weather', className = 'weather-icon-img', darkMode = false, useDay = true) {
     const img = document.createElement('img');
-    img.src = getWeatherIconUrl(weatherCondition);
+    img.src = getWeatherIconUrl(weatherCondition, darkMode , useDay);
     img.alt = altText;
     img.className = className;
-    img.onerror = function () {
-        this.src = `${WEATHER_ICON_BASE_URL}cloudy.svg`;
+    img.onerror = function() {
+        this.src = `/icon?icon=cloudy`;
     };
     return img;
 }
@@ -323,6 +348,7 @@ async function selectCity(placeId, name) {
         console.error('Error selecting city:', error);
         showError('Failed to load weather data');
     }
+    loadFavorites();
 }
 
 async function fetchWeather(lat, lng) {
@@ -359,6 +385,7 @@ async function fetchForecast(lat, lng) {
 
 function updateCurrentWeather(data) {
     currentWeatherData = data;
+    isDaytime = data.isDaytime;
     const weatherCard = document.getElementById('currentWeather');
     const tempRaw = data.temperature?.degrees ?? '--';
     const temp = convertTemp(tempRaw);
@@ -371,7 +398,7 @@ function updateCurrentWeather(data) {
     weatherCard.querySelector('.weather-city').textContent = currentCity?.name ?? 'Unknown';
     const iconContainer = weatherCard.querySelector('.weather-icon');
     iconContainer.innerHTML = '';
-    const iconImg = createWeatherIconElement(weatherCondition, condition, 'weather-icon-img');
+    const iconImg = createWeatherIconElement(weatherCondition, condition, 'weather-icon-img', false, isDaytime);
     iconContainer.appendChild(iconImg);
     weatherCard.querySelector('.temperature').textContent = `${temp}${getTempSymbol()}`;
     weatherCard.querySelector('.condition').textContent = condition;
@@ -418,13 +445,13 @@ function updateForecast(data) {
         const lowTemp = convertTemp(lowTempRaw);
         const weatherCondition = day.daytimeForecast?.weatherCondition || day.daytimeForecast?.condition;
         const conditionDescription = weatherCondition?.description || 'Weather';
-        const iconUrl = getWeatherIconUrl(weatherCondition);
+        const iconUrl = getWeatherIconUrl(weatherCondition, darkMode= false, useDay = isDaytime);
         const card = document.createElement('div');
         card.className = 'forecast-card';
         card.innerHTML = `
             <div class="forecast-day">${dayName}</div>
             <div class="forecast-icon">
-                <img src="${iconUrl}" alt="${conditionDescription}" class="forecast-icon-img" onerror="this.src='${WEATHER_ICON_BASE_URL}cloudy.svg'">
+                <img src="${iconUrl}" alt="${conditionDescription}" class="forecast-icon-img" onerror="this.src='/icon?icon=cloudy'">
             </div>
             <div class="forecast-temps">
                 <span class="temp-high">${highTemp}°<span class="temp-unit">${unitSymbol}</span></span>
@@ -499,6 +526,8 @@ async function loadFavorites() {
 function renderFavorites(favorites) {
     const favoritesContainer = document.getElementById('favorites');
     favoritesContainer.innerHTML = '';
+
+    // Show message if no favorites
     if (favorites.length === 0) {
         favoritesContainer.innerHTML = '<div class="no-favorites">No favorite cities yet</div>';
         return;
