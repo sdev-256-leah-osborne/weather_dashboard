@@ -433,6 +433,7 @@ h2 {
 
 .weather-metrics {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-lg);
 }
@@ -562,6 +563,7 @@ h2 {
 
 .forecast-grid {
     display: grid;
+    overflow-x: auto;
     grid-template-columns: repeat(5, 1fr);
     gap: var(--spacing-sm);
     justify-items: center;
