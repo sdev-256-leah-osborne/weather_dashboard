@@ -345,6 +345,7 @@ async function selectCity(placeId, name) {
         console.error('Error selecting city:', error);
         showError('Failed to load weather data');
     }
+    loadFavorites();
 }
 
 async function fetchWeather(lat, lng) {
@@ -480,26 +481,34 @@ async function loadFavorites() {
 function renderFavorites(favorites) {
     const favoritesContainer = document.getElementById('favorites');
     favoritesContainer.innerHTML = '';
+
+    // Show message if no favorites
     if (favorites.length === 0) {
-        favoritesContainer.innerHTML = '<div class="no-favorites">No favorite cities yet</div>';
-        return;
+        const noFav = document.createElement('div');
+        noFav.className = 'no-favorites';
+        noFav.textContent = 'No favorite cities yet';
+        favoritesContainer.appendChild(noFav);
+    } else {
+        // Render favorite chips
+        favorites.forEach(fav => {
+            const chip = document.createElement('div');
+            chip.className = 'favorite-chip';
+            chip.innerHTML = `
+                <span class="favorite-name" data-place-id="${fav.place_id}">${fav.name}</span>
+                <button class="favorite-remove" data-place-id="${fav.place_id}" title="Remove">×</button>
+            `;
+            chip.querySelector('.favorite-name').addEventListener('click', () => {
+                selectCity(fav.place_id, fav.name);
+            });
+            chip.querySelector('.favorite-remove').addEventListener('click', (e) => {
+                e.stopPropagation();
+                removeFavorite(fav.place_id);
+            });
+            favoritesContainer.appendChild(chip);
+        });
     }
-    favorites.forEach(fav => {
-        const chip = document.createElement('div');
-        chip.className = 'favorite-chip';
-        chip.innerHTML = `
-            <span class="favorite-name" data-place-id="${fav.place_id}">${fav.name}</span>
-            <button class="favorite-remove" data-place-id="${fav.place_id}" title="Remove">×</button>
-        `;
-        chip.querySelector('.favorite-name').addEventListener('click', () => {
-            selectCity(fav.place_id, fav.name);
-        });
-        chip.querySelector('.favorite-remove').addEventListener('click', (e) => {
-            e.stopPropagation();
-            removeFavorite(fav.place_id);
-        });
-        favoritesContainer.appendChild(chip);
-    });
+
+    // Always render the "Add Current" button if currentCity exists
     if (currentCity) {
         const addBtn = document.createElement('button');
         addBtn.className = 'add-favorite-btn';

@@ -24,7 +24,11 @@ logger = logging.getLogger(__name__)
 
 
 def json_response(data, status=200):
-    return jsonify(data), status
+    """
+    Return a proper Flask Response object that can have cookies set.
+    """
+    resp = make_response(jsonify(data), status)
+    return resp
 
 
 def load_cookie(name, default=None):
