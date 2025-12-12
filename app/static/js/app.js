@@ -108,7 +108,7 @@ function getWeatherIconUrl(weatherCondition, darkMode = false, useDay = true) {
     const iconMap = useDay ? WEATHER_ICON_DAY_MAP : WEATHER_ICON_NIGHT_MAP;
     const iconName = iconMap[conditionType] || 'cloudy';
 
-    return `/icon?icon=${iconName}${!!darkMode ? '&dark=true' : ''}`;
+    return `/icon?icon=${iconName}${darkMode ? '&dark=true' : ''}`;
 }
 
 function createWeatherIconElement(weatherCondition, altText = 'Weather', className = 'weather-icon-img', darkMode = false, useDay = true) {
