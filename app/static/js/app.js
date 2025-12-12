@@ -6,6 +6,7 @@ let currentForecastData = null;
 let isDaytime = null;
 let temperatureUnit = localStorage.getItem('tempUnit') || 'C';
 let windUnit = localStorage.getItem('windUnit') || 'km/h';
+let currentFavorites = [];
 
 const WEATHER_ICON_DAY_MAP = {
     'CLEAR': 'sunny',
@@ -126,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearchBar();
     initializeTemperatureToggle();
     initializeWindToggle();
+    initializeFavoriteButton();
     loadFavorites();
 });
 
@@ -339,6 +341,7 @@ async function selectCity(placeId, name) {
             lat: lat,
             lng: lng
         };
+        updateFavoriteButton();
         await fetchWeather(lat, lng);
         await fetchForecast(lat, lng);
     } catch (error) {
@@ -471,7 +474,9 @@ async function loadFavorites() {
         const favorites = await response.json();
         console.log('Favorites:', favorites);
         if (Array.isArray(favorites)) {
+            currentFavorites = favorites;
             renderFavorites(favorites);
+            updateFavoriteButton();
         }
     } catch (error) {
         console.error('Error loading favorites:', error);
@@ -507,15 +512,44 @@ function renderFavorites(favorites) {
             favoritesContainer.appendChild(chip);
         });
     }
+}
 
-    // Always render the "Add Current" button if currentCity exists
-    if (currentCity) {
-        const addBtn = document.createElement('button');
-        addBtn.className = 'add-favorite-btn';
-        addBtn.textContent = '+ Add Current';
-        addBtn.addEventListener('click', () => addFavorite(currentCity.place_id, currentCity.name));
-        favoritesContainer.appendChild(addBtn);
+function isCityFavorited() {
+    if (!currentCity) return false;
+    return currentFavorites.some(fav => fav.place_id === currentCity.place_id);
+}
+
+function updateFavoriteButton() {
+    const favoriteBtn = document.getElementById('favoriteBtn');
+
+    if (!currentCity) {
+        favoriteBtn.style.display = 'none';
+        return;
     }
+
+    favoriteBtn.style.display = 'flex';
+
+    if (isCityFavorited()) {
+        favoriteBtn.classList.add('favorited');
+        favoriteBtn.title = 'Remove from favorites';
+    } else {
+        favoriteBtn.classList.remove('favorited');
+        favoriteBtn.title = 'Add to favorites';
+    }
+}
+
+function initializeFavoriteButton() {
+    const favoriteBtn = document.getElementById('favoriteBtn');
+
+    favoriteBtn.addEventListener('click', async () => {
+        if (!currentCity) return;
+
+        if (isCityFavorited()) {
+            await removeFavorite(currentCity.place_id);
+        } else {
+            await addFavorite(currentCity.place_id, currentCity.name);
+        }
+    });
 }
 
 async function addFavorite(placeId, name) {
