@@ -1,6 +1,7 @@
 const DEBOUNCE_DELAY = 300;
 let debounceTimer = null;
 let currentCity = null;
+let currentFavorites = [];
 let currentWeatherData = null;
 let currentForecastData = null;
 let isDaytime = null;
@@ -113,10 +114,10 @@ function getWeatherIconUrl(weatherCondition, darkMode = false, useDay = true) {
 
 function createWeatherIconElement(weatherCondition, altText = 'Weather', className = 'weather-icon-img', darkMode = false, useDay = true) {
     const img = document.createElement('img');
-    img.src = getWeatherIconUrl(weatherCondition, darkMode , useDay);
+    img.src = getWeatherIconUrl(weatherCondition, darkMode, useDay);
     img.alt = altText;
     img.className = className;
-    img.onerror = function() {
+    img.onerror = function () {
         this.src = `/icon?icon=cloudy`;
     };
     return img;
@@ -126,6 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeSearchBar();
     initializeTemperatureToggle();
     initializeWindToggle();
+    initializeFavoriteButton();
     loadFavorites();
 });
 
@@ -166,7 +168,7 @@ function convertTemp(celsius) {
     const temp = parseFloat(celsius);
     if (isNaN(temp)) return '--';
     if (temperatureUnit === 'F') {
-        return ((temp * 9/5) + 32).toFixed(1);
+        return ((temp * 9 / 5) + 32).toFixed(1);
     }
     return temp.toFixed(1);
 }
@@ -339,6 +341,7 @@ async function selectCity(placeId, name) {
             lat: lat,
             lng: lng
         };
+        updateFavoriteButton();
         await fetchWeather(lat, lng);
         await fetchForecast(lat, lng);
     } catch (error) {
@@ -434,7 +437,7 @@ function updateForecast(data) {
         } else {
             const futureDate = new Date(today);
             futureDate.setDate(today.getDate() + index);
-            dayName = futureDate.toLocaleDateString('en-US', { weekday: 'short' });
+            dayName = futureDate.toLocaleDateString('en-US', {weekday: 'short'});
         }
         const highTempRaw = day.daytimeForecast?.temperature?.degrees ?? day.maxTemperature?.degrees ?? '--';
         const lowTempRaw = day.nighttimeForecast?.temperature?.degrees ?? day.minTemperature?.degrees ?? '--';
@@ -442,7 +445,7 @@ function updateForecast(data) {
         const lowTemp = convertTemp(lowTempRaw);
         const weatherCondition = day.daytimeForecast?.weatherCondition || day.daytimeForecast?.condition;
         const conditionDescription = weatherCondition?.description || 'Weather';
-        const iconUrl = getWeatherIconUrl(weatherCondition, darkMode= false, useDay = isDaytime);
+        const iconUrl = getWeatherIconUrl(weatherCondition, darkMode = false, useDay = isDaytime);
         const card = document.createElement('div');
         card.className = 'forecast-card';
         card.innerHTML = `
@@ -471,7 +474,9 @@ async function loadFavorites() {
         const favorites = await response.json();
         console.log('Favorites:', favorites);
         if (Array.isArray(favorites)) {
+            currentFavorites = favorites;
             renderFavorites(favorites);
+            updateFavoriteButton();
         }
     } catch (error) {
         console.error('Error loading favorites:', error);
@@ -507,15 +512,44 @@ function renderFavorites(favorites) {
             favoritesContainer.appendChild(chip);
         });
     }
+}
 
-    // Always render the "Add Current" button if currentCity exists
-    if (currentCity) {
-        const addBtn = document.createElement('button');
-        addBtn.className = 'add-favorite-btn';
-        addBtn.textContent = '+ Add Current';
-        addBtn.addEventListener('click', () => addFavorite(currentCity.place_id, currentCity.name));
-        favoritesContainer.appendChild(addBtn);
+function isCityFavorited() {
+    if (!currentCity) return false;
+    return currentFavorites.some(fav => fav.place_id === currentCity.place_id);
+}
+
+function updateFavoriteButton() {
+    const favoriteBtn = document.getElementById('favoriteBtn');
+
+    if (!currentCity) {
+        favoriteBtn.style.display = 'none';
+        return;
     }
+
+    favoriteBtn.style.display = 'flex';
+
+    if (isCityFavorited()) {
+        favoriteBtn.classList.add('favorited');
+        favoriteBtn.title = 'Remove from favorites';
+    } else {
+        favoriteBtn.classList.remove('favorited');
+        favoriteBtn.title = 'Add to favorites';
+    }
+}
+
+function initializeFavoriteButton() {
+    const favoriteBtn = document.getElementById('favoriteBtn');
+
+    favoriteBtn.addEventListener('click', async () => {
+        if (!currentCity) return;
+
+        if (isCityFavorited()) {
+            await removeFavorite(currentCity.place_id);
+        } else {
+            await addFavorite(currentCity.place_id, currentCity.name);
+        }
+    });
 }
 
 async function addFavorite(placeId, name) {

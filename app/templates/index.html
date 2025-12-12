@@ -7,71 +7,81 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="container">
-        <header class="header">
-            <h1>Weather Dashboard</h1>
-            <div class="temp-toggle" id="tempToggle">
-                <span class="temp-unit-c active">°C</span>
-                <span class="temp-unit-f">°F</span>
-            </div>
-        </header>
-        
-        <div class="search-section">
-            <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input type="text" id="cityInput" placeholder="Search for a city...">
-            <div id="searchResults" class="search-results"></div>
+<div class="container">
+    <header class="header">
+        <h1>Weather Dashboard</h1>
+        <div class="temp-toggle" id="tempToggle">
+            <span class="temp-unit-c active">°C</span>
+            <span class="temp-unit-f">°F</span>
         </div>
+    </header>
 
-        <div class="favorites-section">
-            <div class="favorites-list" id="favorites"></div>
+    <div class="search-section">
+        <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+             stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input type="text" id="cityInput" placeholder="Search for a city...">
+        <div id="searchResults" class="search-results"></div>
+    </div>
+
+    <div class="favorites-section">
+        <div class="favorites-list" id="favorites"></div>
+    </div>
+
+    <div class="weather-card" id="currentWeather">
+        <div class="weather-header">
+            <div>
+                <h2 class="weather-city">Select a city</h2>
+            </div>
+            <button class="favorite-btn" id="favoriteBtn" style="display: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2"
+                     width="24" height="24">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                          d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+            </button>
         </div>
-
-        <div class="weather-card" id="currentWeather">
-            <div class="weather-header">
-                <div>
-                    <h2 class="weather-city">Select a city</h2>
-                </div>
+        <div class="weather-info">
+            <div class="weather-icon">
+                <img src="/icon?icon=cloudy" alt="Weather" class="weather-icon-img">
             </div>
-            <div class="weather-info">
-                <div class="weather-icon">
-                    <img src="/icon?icon=cloudy" alt="Weather" class="weather-icon-img">
-                </div>
-                <div class="weather-main">
-                    <div class="temperature">--°C</div>
-                    <div class="condition">No data</div>
-                </div>
+            <div class="weather-main">
+                <div class="temperature">--°C</div>
+                <div class="condition">No data</div>
             </div>
-        </div>
-
-        <div class="weather-metrics" id="metrics">
-            <div class="metric-card">
-                <div class="metric-icon">💧</div>
-                <div class="metric-content">
-                    <div class="metric-value">--%</div>
-                    <div class="metric-label">Humidity</div>
-                </div>
-            </div>
-            <div class="metric-card wind-card">
-                <div class="metric-icon">💨</div>
-                <div class="metric-content">
-                    <div class="metric-value">-- km/h</div>
-                    <div class="metric-label">Wind</div>
-                </div>
-                <div class="wind-toggle" id="windToggle">
-                    <span class="wind-unit-km active">km/h</span>
-                    <span class="wind-unit-mi">mph</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="forecast-container" id="forecastContainer" style="display: none;">
-            <h2>5-Day Forecast</h2>
-            <div class="forecast-grid" id="forecast"></div>
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <div class="weather-metrics" id="metrics">
+        <div class="metric-card">
+            <div class="metric-icon">💧</div>
+            <div class="metric-content">
+                <div class="metric-value">--%</div>
+                <div class="metric-label">Humidity</div>
+            </div>
+        </div>
+        <div class="metric-card wind-card">
+            <div class="metric-icon">💨</div>
+            <div class="metric-content">
+                <div class="metric-value">-- km/h</div>
+                <div class="metric-label">Wind</div>
+            </div>
+            <div class="wind-toggle" id="windToggle">
+                <span class="wind-unit-km active">km/h</span>
+                <span class="wind-unit-mi">mph</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="forecast-container" id="forecastContainer" style="display: none;">
+        <h2>5-Day Forecast</h2>
+        <div class="forecast-grid" id="forecast"></div>
+    </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
 </html>
