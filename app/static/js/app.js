@@ -7,6 +7,9 @@ let isDaytime = null;
 let temperatureUnit = localStorage.getItem('tempUnit') || 'C';
 let windUnit = localStorage.getItem('windUnit') || 'km/h';
 let currentFavorites = [];
+let notificationQueue = [];
+let notificationIdCounter = 0;
+let lastValidCity = null;
 
 const WEATHER_ICON_DAY_MAP = {
     'CLEAR': 'sunny',
@@ -239,6 +242,11 @@ function initializeSearchBar() {
         }
     });
     searchInput.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+            e.preventDefault();
+            searchInput.select();
+            return;
+        }
         const items = searchResults.querySelectorAll('.search-result-item');
         const activeItem = searchResults.querySelector('.search-result-item.active');
         let activeIndex = Array.from(items).indexOf(activeItem);
@@ -315,10 +323,12 @@ function renderSearchResults(predictions) {
     searchResults.style.display = 'block';
 }
 
-async function selectCity(placeId, name) {
+async function selectCity(placeId, name, fromFavorites = false) {
     const searchInput = document.getElementById('cityInput');
     const searchResults = document.getElementById('searchResults');
-    searchInput.value = name;
+    if (!fromFavorites) {
+        searchInput.value = name;
+    }
     searchResults.style.display = 'none';
     try {
         const detailsResponse = await fetch(`/place_details?place_id=${encodeURIComponent(placeId)}`);
@@ -341,14 +351,24 @@ async function selectCity(placeId, name) {
             lat: lat,
             lng: lng
         };
-        updateFavoriteButton();
-        await fetchWeather(lat, lng);
-        await fetchForecast(lat, lng);
+        const weatherSuccess = await fetchWeather(lat, lng);
+        if (weatherSuccess) {
+            lastValidCity = currentCity;
+            searchInput.value = '';
+            updateFavoriteButton();
+            await fetchForecast(lat, lng);
+            loadFavorites();
+        } else {
+            currentCity = lastValidCity;
+            searchInput.value = '';
+            updateFavoriteButton();
+        }
     } catch (error) {
         console.error('Error selecting city:', error);
         showError('Failed to load weather data');
+        currentCity = lastValidCity;
+        updateFavoriteButton();
     }
-    loadFavorites();
 }
 
 async function fetchWeather(lat, lng) {
@@ -358,13 +378,15 @@ async function fetchWeather(lat, lng) {
         console.log('Current weather:', data);
         if (data.error) {
             console.error('Weather error:', data.error);
-            showError('Could not fetch weather');
-            return;
+            showError('Could not fetch weather.\nData for some areas may not be available.');
+            return false;
         }
         updateCurrentWeather(data);
+        return true;
     } catch (error) {
         console.error('Weather fetch error:', error);
         showError('Connection error');
+        return false;
     }
 }
 
@@ -465,7 +487,85 @@ function updateForecast(data) {
 
 function showError(message) {
     console.error('Error:', message);
-    alert(message);
+    const notificationId = ++notificationIdCounter;
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-error';
+    notification.setAttribute('data-notification-id', notificationId);
+    notification.innerHTML = `
+        <span class="notification-message">${message}</span>
+        <button class="notification-close" aria-label="Close">&times;</button>
+    `;
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        document.body.appendChild(container);
+    }
+    container.appendChild(notification);
+    notificationQueue.push(notificationId);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        removeNotification(notification, notificationId);
+    });
+
+    setTimeout(() => {
+        removeNotification(notification, notificationId);
+    }, 3000);
+}
+
+function showSuccess(message) {
+    const notificationId = ++notificationIdCounter;
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-success';
+    notification.setAttribute('data-notification-id', notificationId);
+    notification.innerHTML = `
+        <span class="notification-message">${message}</span>
+        <button class="notification-close" aria-label="Close">&times;</button>
+    `;
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        document.body.appendChild(container);
+    }
+    container.appendChild(notification);
+    notificationQueue.push(notificationId);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        removeNotification(notification, notificationId);
+    });
+
+    setTimeout(() => {
+        removeNotification(notification, notificationId);
+    }, 3000);
+}
+
+function removeNotification(notification, notificationId) {
+    if (!notification || !notification.parentElement) return;
+
+    notification.classList.remove('show');
+    notification.classList.add('hide');
+
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.parentElement.removeChild(notification);
+        }
+        // Remove from queue
+        const index = notificationQueue.indexOf(notificationId);
+        if (index > -1) {
+            notificationQueue.splice(index, 1);
+        }
+    }, 300);
 }
 
 async function loadFavorites() {
@@ -503,7 +603,7 @@ function renderFavorites(favorites) {
                 <button class="favorite-remove" data-place-id="${fav.place_id}" title="Remove">×</button>
             `;
             chip.querySelector('.favorite-name').addEventListener('click', () => {
-                selectCity(fav.place_id, fav.name);
+                selectCity(fav.place_id, fav.name, true);
             });
             chip.querySelector('.favorite-remove').addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -563,6 +663,7 @@ async function addFavorite(placeId, name) {
             showError(result.error);
             return;
         }
+        showSuccess(`Added ${name} to favorites.`);
         loadFavorites();
     } catch (error) {
         console.error('Error adding favorite:', error);
