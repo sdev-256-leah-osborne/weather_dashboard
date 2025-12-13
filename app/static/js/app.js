@@ -242,6 +242,11 @@ function initializeSearchBar() {
         }
     });
     searchInput.addEventListener('keydown', (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'a') {
+            e.preventDefault();
+            searchInput.select();
+            return;
+        }
         const items = searchResults.querySelectorAll('.search-result-item');
         const activeItem = searchResults.querySelector('.search-result-item.active');
         let activeIndex = Array.from(items).indexOf(activeItem);
@@ -318,10 +323,12 @@ function renderSearchResults(predictions) {
     searchResults.style.display = 'block';
 }
 
-async function selectCity(placeId, name) {
+async function selectCity(placeId, name, fromFavorites = false) {
     const searchInput = document.getElementById('cityInput');
     const searchResults = document.getElementById('searchResults');
-    searchInput.value = name;
+    if (!fromFavorites) {
+        searchInput.value = name;
+    }
     searchResults.style.display = 'none';
     try {
         const detailsResponse = await fetch(`/place_details?place_id=${encodeURIComponent(placeId)}`);
@@ -347,6 +354,7 @@ async function selectCity(placeId, name) {
         const weatherSuccess = await fetchWeather(lat, lng);
         if (weatherSuccess) {
             lastValidCity = currentCity;
+            searchInput.value = '';
             updateFavoriteButton();
             await fetchForecast(lat, lng);
             loadFavorites();
@@ -595,7 +603,7 @@ function renderFavorites(favorites) {
                 <button class="favorite-remove" data-place-id="${fav.place_id}" title="Remove">×</button>
             `;
             chip.querySelector('.favorite-name').addEventListener('click', () => {
-                selectCity(fav.place_id, fav.name);
+                selectCity(fav.place_id, fav.name, true);
             });
             chip.querySelector('.favorite-remove').addEventListener('click', (e) => {
                 e.stopPropagation();
