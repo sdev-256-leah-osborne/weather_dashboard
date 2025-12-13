@@ -7,6 +7,9 @@ let isDaytime = null;
 let temperatureUnit = localStorage.getItem('tempUnit') || 'C';
 let windUnit = localStorage.getItem('windUnit') || 'km/h';
 let currentFavorites = [];
+let notificationQueue = [];
+let notificationIdCounter = 0;
+let lastValidCity = null;
 
 const WEATHER_ICON_DAY_MAP = {
     'CLEAR': 'sunny',
@@ -341,14 +344,23 @@ async function selectCity(placeId, name) {
             lat: lat,
             lng: lng
         };
-        updateFavoriteButton();
-        await fetchWeather(lat, lng);
-        await fetchForecast(lat, lng);
+        const weatherSuccess = await fetchWeather(lat, lng);
+        if (weatherSuccess) {
+            lastValidCity = currentCity;
+            updateFavoriteButton();
+            await fetchForecast(lat, lng);
+            loadFavorites();
+        } else {
+            currentCity = lastValidCity;
+            searchInput.value = '';
+            updateFavoriteButton();
+        }
     } catch (error) {
         console.error('Error selecting city:', error);
         showError('Failed to load weather data');
+        currentCity = lastValidCity;
+        updateFavoriteButton();
     }
-    loadFavorites();
 }
 
 async function fetchWeather(lat, lng) {
@@ -358,13 +370,15 @@ async function fetchWeather(lat, lng) {
         console.log('Current weather:', data);
         if (data.error) {
             console.error('Weather error:', data.error);
-            showError('Could not fetch weather');
-            return;
+            showError('Could not fetch weather.\nData for some areas may not be available.');
+            return false;
         }
         updateCurrentWeather(data);
+        return true;
     } catch (error) {
         console.error('Weather fetch error:', error);
         showError('Connection error');
+        return false;
     }
 }
 
@@ -465,7 +479,85 @@ function updateForecast(data) {
 
 function showError(message) {
     console.error('Error:', message);
-    alert(message);
+    const notificationId = ++notificationIdCounter;
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-error';
+    notification.setAttribute('data-notification-id', notificationId);
+    notification.innerHTML = `
+        <span class="notification-message">${message}</span>
+        <button class="notification-close" aria-label="Close">&times;</button>
+    `;
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        document.body.appendChild(container);
+    }
+    container.appendChild(notification);
+    notificationQueue.push(notificationId);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        removeNotification(notification, notificationId);
+    });
+
+    setTimeout(() => {
+        removeNotification(notification, notificationId);
+    }, 3000);
+}
+
+function showSuccess(message) {
+    const notificationId = ++notificationIdCounter;
+    const notification = document.createElement('div');
+    notification.className = 'notification notification-success';
+    notification.setAttribute('data-notification-id', notificationId);
+    notification.innerHTML = `
+        <span class="notification-message">${message}</span>
+        <button class="notification-close" aria-label="Close">&times;</button>
+    `;
+    let container = document.getElementById('notificationContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notificationContainer';
+        document.body.appendChild(container);
+    }
+    container.appendChild(notification);
+    notificationQueue.push(notificationId);
+
+    setTimeout(() => {
+        notification.classList.add('show');
+    }, 10);
+
+    const closeBtn = notification.querySelector('.notification-close');
+    closeBtn.addEventListener('click', () => {
+        removeNotification(notification, notificationId);
+    });
+
+    setTimeout(() => {
+        removeNotification(notification, notificationId);
+    }, 3000);
+}
+
+function removeNotification(notification, notificationId) {
+    if (!notification || !notification.parentElement) return;
+
+    notification.classList.remove('show');
+    notification.classList.add('hide');
+
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.parentElement.removeChild(notification);
+        }
+        // Remove from queue
+        const index = notificationQueue.indexOf(notificationId);
+        if (index > -1) {
+            notificationQueue.splice(index, 1);
+        }
+    }, 300);
 }
 
 async function loadFavorites() {
@@ -563,6 +655,7 @@ async function addFavorite(placeId, name) {
             showError(result.error);
             return;
         }
+        showSuccess(`Added ${name} to favorites.`);
         loadFavorites();
     } catch (error) {
         console.error('Error adding favorite:', error);
